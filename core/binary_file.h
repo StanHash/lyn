@@ -21,24 +21,24 @@ public:
 	const std::vector<byte_t>& data() const { return mData; }
 
 	template<typename T, int amount = sizeof(T)>
-	T get(int& pos) const;
+	T read(int& pos) const;
 
 	template<typename T, int amount = sizeof(T)>
-	T at(int pos) const { return get<T, amount>(pos); }
+	T at(int pos) const { return read<T, amount>(pos); }
 
-	byte_t get_byte(int& pos) const;
-	byte_t byte_at(int pos) const { return get_byte(pos); }
+	byte_t read_byte(int& pos) const;
+	byte_t byte_at(int pos) const { return read_byte(pos); }
 
 private:
 	std::vector<byte_t> mData;
 };
 
 template<typename T, int byte_count = sizeof(T)>
-T binary_file::get(int& pos) const {
+T binary_file::read(int& pos) const {
 	T result = 0;
 
 	for (int i=0; i<byte_count; ++i)
-		result |= (get_byte(pos) << (i*8));
+		result |= (read_byte(pos) << (i*8));
 
 	return result;
 }

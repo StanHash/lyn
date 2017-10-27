@@ -24,7 +24,7 @@ void event_section::write_to_stream(std::ostream& output) const {
 	output << std::endl;
 }
 
-void event_section::set_size(unsigned int size) {
+void event_section::resize(unsigned int size) {
 	mCodeMap.resize(size);
 }
 

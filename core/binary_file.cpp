@@ -11,7 +11,7 @@ void binary_file::load_from_stream(std::istream& input) {
 		mData[i] = input.get();
 }
 
-binary_file::byte_t binary_file::get_byte(int& pos) const {
+binary_file::byte_t binary_file::read_byte(int& pos) const {
 	if (pos >= mData.size())
 		throw std::out_of_range("aa"); // TODO
 

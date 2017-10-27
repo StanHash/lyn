@@ -34,7 +34,7 @@ public:
 
 	void write_to_stream(std::ostream& output) const;
 
-	void set_size(unsigned int size);
+	void resize(unsigned int size);
 
 	void set_code(unsigned int offset, event_code&& code);
 
