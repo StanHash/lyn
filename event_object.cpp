@@ -112,8 +112,6 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 				auto rel  = elfFile.rel(elfSection, i);
 				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rel.symId()).st_name);
 
-				std::cout << name << " " << elfFile.symbol(symbolSection, rel.symId()).type() << std::endl;
-
 				sectionData.relocations.push_back({ std::string(name), 0, rel.type(), rel.r_offset });
 			}
 		} else if (elfSection.sh_type == elf::SHT_RELA) {
