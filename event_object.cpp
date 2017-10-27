@@ -1,6 +1,7 @@
 #include "event_object.h"
 
 #include <iomanip>
+#include <algorithm>
 
 #include "core/event_section.h"
 
@@ -27,6 +28,8 @@ std::string toHexDigits(std::uint32_t value, int digits) {
 void event_object::load_from_elf(const elf_file& elfFile) {
 	mSectionDatas.resize(elfFile.sections().size());
 
+	// Initializing written Sections from relevant elf sections
+
 	for (int i=0; i<elfFile.sections().size(); ++i) {
 		auto& elfSection = elfFile.sections()[i];
 
@@ -45,12 +48,14 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 		}
 	}
 
-	for (auto& section : elfFile.sections()) {
-		if (section.sh_type == elf::SHT_SYMTAB) {
-			int symbolCount = section.sh_size / 0x10;
+	// Initializing labels, mappings & relocations from other elf sections
+
+	for (auto& elfSection : elfFile.sections()) {
+		if (elfSection.sh_type == elf::SHT_SYMTAB) {
+			int symbolCount = elfSection.sh_size / 0x10;
 
 			for (int i=0; i<symbolCount; ++i) {
-				auto sym = elfFile.symbol(section, i);
+				auto sym = elfFile.symbol(elfSection, i);
 
 				if (sym.st_shndx >= mSectionDatas.size())
 					continue;
@@ -60,7 +65,7 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 				if (!sectionData.outType)
 					continue;
 
-				std::string symbolName = elfFile.string(elfFile.sections()[section.sh_link], sym.st_name);
+				std::string symbolName = elfFile.string(elfFile.sections()[elfSection.sh_link], sym.st_name);
 
 				switch (sym.type()) {
 				case elf::STT_FUNC:
@@ -88,36 +93,42 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 					break;
 				}
 			}
-		} else if (section.sh_type == elf::SHT_REL) {
-			int relCount = section.sh_size / 0x08;
+		} else if (elfSection.sh_type == elf::SHT_REL) {
+			int relCount = elfSection.sh_size / 0x08;
 
-			auto& symbolSection = elfFile.sections()[section.sh_link];
+			auto& symbolSection = elfFile.sections()[elfSection.sh_link];
 			auto& symbolNameSection = elfFile.sections()[symbolSection.sh_link];
 
-			auto& sectionData = mSectionDatas[section.sh_info];
+			auto& sectionData = mSectionDatas[elfSection.sh_info];
 
 			for (int i=0; i<relCount; ++i) {
-				auto rel  = elfFile.rel(section, i);
+				auto rel  = elfFile.rel(elfSection, i);
 				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rel.symId()).st_name);
 
-				sectionData.relocations.push_back({ std::string(name), rel.type(), 0, rel.r_offset });
+				sectionData.relocations.push_back({ std::string(name), 0, rel.type(), rel.r_offset });
 			}
-		} else if (section.sh_type == elf::SHT_RELA) {
-			int relCount = section.sh_size / 0x0C;
+		} else if (elfSection.sh_type == elf::SHT_RELA) {
+			int relCount = elfSection.sh_size / 0x0C;
 
-			auto& symbolSection = elfFile.sections()[section.sh_link];
+			auto& symbolSection = elfFile.sections()[elfSection.sh_link];
 			auto& symbolNameSection = elfFile.sections()[symbolSection.sh_link];
 
-			auto& sectionData = mSectionDatas[section.sh_info];
+			auto& sectionData = mSectionDatas[elfSection.sh_info];
 
 			for (int i=0; i<relCount; ++i) {
-				auto rela = elfFile.rela(section, i);
+				auto rela = elfFile.rela(elfSection, i);
 				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rela.symId()).st_name);
 
-				sectionData.relocations.push_back({ std::string(name), rela.type(), rela.r_addend, rela.r_offset });
+				sectionData.relocations.push_back({ std::string(name), rela.r_addend, rela.type(), rela.r_offset });
 			}
 		}
 	}
+
+	// Sorting mappings
+	for (auto& sectionData : mSectionDatas)
+		std::sort(sectionData.mappings.begin(), sectionData.mappings.end(), [] (const mapping& left, const mapping& right) {
+			return left.offset < right.offset;
+		});
 }
 
 void event_object::write_events(std::ostream& output) const {
