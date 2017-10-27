@@ -2,9 +2,6 @@
 
 namespace lyn {
 
-// const std::string elf_file::symbolTableSectionName = ".symtab";
-// const std::string elf_file::symbolNamesSectionName = ".strtab";
-
 void elf_file::load_from_stream(std::istream& input) {
 	binary_file::load_from_stream(input);
 

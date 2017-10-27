@@ -153,32 +153,10 @@ void event_object::write_events(std::ostream& output) const {
 		for (auto& reloc : sectionData.relocations) {
 			switch (reloc.type) {
 			case 0x0A: // R_ARM_THM_CALL (bl)
-			{
 				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::MACRO_BL, reloc.symbol));
-				/*
-				std::string blRange = "(pointer - CURRENTOFFSET - 4)>>1";
-				std::string bl1 = "((((BLRange)>>11)&0x7ff)|0xf000)";
-				std::string bl2 = "(((BLRange)&0x7ff)|0xf800)";
-
-				std::string::size_type found = std::string::npos;
-
-				while ((found = blRange.find("pointer")) != std::string::npos)
-					blRange.replace(found, 7, reloc.symbol);
-
-				while ((found = bl1.find("BLRange")) != std::string::npos)
-					bl1.replace(found, 7, blRange);
-
-				while ((found = bl2.find("BLRange")) != std::string::npos)
-					bl2.replace(found, 7, blRange);
-
-				eventSection.set_code(reloc.offset + 0, { lyn::event_section::event_code::SHORT, bl1, lyn::event_section::event_code::ForceNewline });
-				eventSection.set_code(reloc.offset + 2, { lyn::event_section::event_code::SHORT, bl2, lyn::event_section::event_code::ForceContinue });
-				//*/
 				break;
 			}
-			}
 		}
-		// std::cout << reloc.symbolName << ":" << reloc.type << ":" << reloc.offset << std::endl;
 
 		eventSection.compressCodes();
 		eventSection.optimize();
