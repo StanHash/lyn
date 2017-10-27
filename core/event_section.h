@@ -18,6 +18,7 @@ public:
 	void set_code(unsigned int offset, event_code&& code);
 
 	void compressCodes();
+	void optimize();
 
 private:
 	std::vector<int> mCodeMap;

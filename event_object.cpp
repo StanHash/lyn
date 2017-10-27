@@ -180,6 +180,9 @@ void event_object::write_events(std::ostream& output) const {
 		}
 		// std::cout << reloc.symbolName << ":" << reloc.type << ":" << reloc.offset << std::endl;
 
+		eventSection.compressCodes();
+		eventSection.optimize();
+
 		output << "// section " << sectionData.name << std::endl << std::endl;
 
 		if (!sectionData.labels.empty()) {
