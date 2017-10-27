@@ -69,6 +69,7 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 
 				switch (sym.type()) {
 				case elf::STT_FUNC:
+					sym.st_value &= ~1; // remove eventual thumb bit
 				case elf::STT_OBJECT: {
 					if (sym.bind() == elf::STB_GLOBAL)
 						sectionData.labels.push_back({ symbolName, sym.st_value });
@@ -111,6 +112,8 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 				auto rel  = elfFile.rel(elfSection, i);
 				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rel.symId()).st_name);
 
+				std::cout << name << " " << elfFile.symbol(symbolSection, rel.symId()).type() << std::endl;
+
 				sectionData.relocations.push_back({ std::string(name), 0, rel.type(), rel.r_offset });
 			}
 		} else if (elfSection.sh_type == elf::SHT_RELA) {
@@ -148,17 +151,42 @@ void event_object::write_events(std::ostream& output) const {
 		eventSection.resize(sectionData.data.size());
 
 		for (int i=0; i<sectionData.data.size(); i += 2)
-			eventSection.set_code(i, lyn::event_code(lyn::event_code::CODE_SHORT, std::string("0x").append(toHexDigits(sectionData.data[i] | (sectionData.data[i+1] << 8), 4))));
+			eventSection.set_code(i, lyn::event_code(
+				lyn::event_code::CODE_SHORT,
+				std::string("0x").append(toHexDigits(sectionData.data[i] | (sectionData.data[i+1] << 8), 4))
+			));
 
 		for (auto& reloc : sectionData.relocations) {
 			switch (reloc.type) {
-			case 0x0A: // R_ARM_THM_CALL (bl)
+
+			case 0x02: // R_ARM_ABS32 (POIN Symbol + Addend)
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_POIN, reloc.symbol));
+				break;
+
+			case 0x03: // R_ARM_REL32 (WORD Symbol + Addend - CURRENTOFFSET)
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_WORD, reloc.symbol));
+				break;
+
+			case 0x05: // R_ARM_ABS16 (SHORT Symbol + Addend - CURRENTOFFSET)
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_SHORT, reloc.symbol));
+				break;
+
+			case 0x08: // R_ARM_ABS8 (BYTE Symbol + Addend - CURRENTOFFSET)
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_BYTE, reloc.symbol));
+				break;
+
+			case 0x09: // R_ARM_SBREL32 (WORD Symbol + Addend) (POIN Symbol + Addend - 0x8000000)
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_WORD, reloc.symbol));
+				break;
+
+			case 0x0A: // R_ARM_THM_CALL (BL)
 				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::MACRO_BL, reloc.symbol));
 				break;
+
 			}
 		}
 
-		eventSection.compressCodes();
+		eventSection.compress_codes();
 		eventSection.optimize();
 
 		output << "// section " << sectionData.name << std::endl << std::endl;

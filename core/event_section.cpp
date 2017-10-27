@@ -37,7 +37,7 @@ void event_section::set_code(unsigned int offset, event_code&& code) {
 		mCodeMap[offset + i] = index;
 }
 
-void event_section::compressCodes() {
+void event_section::compress_codes() {
 	int currentOffset = 0;
 
 	while (currentOffset < mCodeMap.size()) {

@@ -17,7 +17,7 @@ public:
 
 	void set_code(unsigned int offset, event_code&& code);
 
-	void compressCodes();
+	void compress_codes();
 	void optimize();
 
 private:
