@@ -69,28 +69,34 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 
 				switch (sym.type()) {
 				case elf::STT_FUNC:
-				case elf::STT_OBJECT:
+				case elf::STT_OBJECT: {
 					if (sym.bind() == elf::STB_GLOBAL)
 						sectionData.labels.push_back({ symbolName, sym.st_value });
 
 					break;
+				}
 
-				case elf::STT_NOTYPE:
+				case elf::STT_NOTYPE: {
 					if (sym.bind() != elf::STB_LOCAL)
 						break;
 
-					if ((symbolName == "$t") || (symbolName.substr(0, 3) == "$t."))
+					std::string subString = symbolName.substr(0, 3);
+
+					if ((symbolName == "$t") || (subString == "$t."))
 						sectionData.mappings.push_back({ mapping::Thumb, sym.st_value });
-					else if ((symbolName == "$a") || (symbolName.substr(0, 3) == "$a."))
+					else if ((symbolName == "$a") || (subString == "$a."))
 						sectionData.mappings.push_back({ mapping::ARM, sym.st_value });
-					else if ((symbolName == "$d") || (symbolName.substr(0, 3) == "$d."))
+					else if ((symbolName == "$d") || (subString == "$d."))
 						sectionData.mappings.push_back({ mapping::Data, sym.st_value });
 
 					break;
+				}
 
-				case elf::STT_FILE:
+				case elf::STT_FILE: {
 					// TODO: output source filename, because why not
 					break;
+				}
+
 				}
 			}
 		} else if (elfSection.sh_type == elf::SHT_REL) {
@@ -142,12 +148,14 @@ void event_object::write_events(std::ostream& output) const {
 		eventSection.resize(sectionData.data.size());
 
 		for (int i=0; i<sectionData.data.size(); i += 2)
-			eventSection.set_code(i, { lyn::event_section::event_code::SHORT, std::string("0x").append(toHexDigits(sectionData.data[i] | (sectionData.data[i+1] << 8), 4)) });
+			eventSection.set_code(i, lyn::event_code(lyn::event_code::CODE_SHORT, std::string("0x").append(toHexDigits(sectionData.data[i] | (sectionData.data[i+1] << 8), 4))));
 
 		for (auto& reloc : sectionData.relocations) {
 			switch (reloc.type) {
 			case 0x0A: // R_ARM_THM_CALL (bl)
 			{
+				eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::MACRO_BL, reloc.symbol));
+				/*
 				std::string blRange = "(pointer - CURRENTOFFSET - 4)>>1";
 				std::string bl1 = "((((BLRange)>>11)&0x7ff)|0xf000)";
 				std::string bl2 = "(((BLRange)&0x7ff)|0xf800)";
@@ -165,7 +173,7 @@ void event_object::write_events(std::ostream& output) const {
 
 				eventSection.set_code(reloc.offset + 0, { lyn::event_section::event_code::SHORT, bl1, lyn::event_section::event_code::ForceNewline });
 				eventSection.set_code(reloc.offset + 2, { lyn::event_section::event_code::SHORT, bl2, lyn::event_section::event_code::ForceContinue });
-
+				//*/
 				break;
 			}
 			}

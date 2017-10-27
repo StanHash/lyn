@@ -15,6 +15,9 @@ set(SOURCE_LIST
     elf/elf_file.h
     elf/elf_file.cpp
 
+    core/event_code.h
+    core/event_code.cpp
+
     core/event_section.h
     core/event_section.cpp
 
