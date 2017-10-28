@@ -38,7 +38,10 @@ const char* elf_file::string(const elf::section_header& header, int pos) const {
 	if (header.sh_type != elf::SHT_STRTAB)
 		throw std::runtime_error("ELF ERROR: tried to read string from non-strtab section!");
 
-	return (const char*) &(data()[header.sh_offset + pos]);
+	if (!is_cstr_at(header.sh_offset + pos))
+		throw std::runtime_error("ELF ERROR: strtab section contains non null-terminated string!");
+
+	return cstr_at(header.sh_offset + pos);
 }
 
 const elf::section_header& elf_file::get_shstrtab_section() const {

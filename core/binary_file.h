@@ -14,17 +14,21 @@ public:
 
 public:
 	void load_from_stream(std::istream& input);
+	void load_from_other(const binary_file& other, unsigned int start = 0, int size = -1);
 
 	size_t size() const { return mData.size(); }
+
+	bool is_cstr_at(int pos) const;
+	const char* cstr_at(int pos) const;
 
 	std::vector<byte_t>&       data()       { return mData; }
 	const std::vector<byte_t>& data() const { return mData; }
 
-	template<typename T, int amount = sizeof(T)>
+	template<typename T, int byte_count = sizeof(T)>
 	T read(int& pos) const;
 
-	template<typename T, int amount = sizeof(T)>
-	T at(int pos) const { return read<T, amount>(pos); }
+	template<typename T, int byte_count = sizeof(T)>
+	T at(int pos) const { return read<T, byte_count>(pos); }
 
 	byte_t read_byte(int& pos) const;
 	byte_t byte_at(int pos) const { return read_byte(pos); }

@@ -21,6 +21,9 @@ set(SOURCE_LIST
     core/event_section.h
     core/event_section.cpp
 
+    section_data.h
+    section_data.cpp
+
     event_object.h
     event_object.cpp
 )
