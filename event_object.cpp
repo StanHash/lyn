@@ -12,6 +12,8 @@ void event_object::load_from_elf(const elf_file& elfFile) {
 }
 
 void event_object::write_events(std::ostream& output) const {
+	mRelocator.make_thumb_veneer("test").write_to_stream(output);
+
 	for (auto& sectionData : mSectionDatas) {
 		event_section events = sectionData.make_events();
 

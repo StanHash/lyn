@@ -2,8 +2,26 @@
 
 namespace lyn {
 
+arm_relocator::arm_relocator() {
+	mThumbVeneerTemplate.resize(0x10);
+
+	mThumbVeneerTemplate.set_code(0, lyn::event_code(lyn::event_code::CODE_SHORT, "0x4778")); // bx pc
+	mThumbVeneerTemplate.set_code(2, lyn::event_code(lyn::event_code::CODE_SHORT, "0x46C0")); // nop
+	mThumbVeneerTemplate.set_code(4, lyn::event_code(lyn::event_code::CODE_WORD, "0xE59FC000")); // ldr ip, =target
+	mThumbVeneerTemplate.set_code(8, lyn::event_code(lyn::event_code::CODE_WORD, "0xE12FFF1C")); // bx ip
+}
+
+event_section arm_relocator::make_thumb_veneer(const std::string targetSymbol) const {
+	event_section result(mThumbVeneerTemplate);
+
+	result.set_code(0x0C, lyn::event_code(lyn::event_code::CODE_POIN, targetSymbol));
+
+	return result;
+}
+
 event_code arm_relocator::make_relocation_code(const section_data::relocation& relocation) const {
 	switch (relocation.type) {
+
 	case 0x02: // R_ARM_ABS32 (POIN Symbol + Addend)
 		return lyn::event_code(lyn::event_code::CODE_POIN, abs_reloc_string(relocation.symbol, relocation.addend));
 
@@ -24,6 +42,7 @@ event_code arm_relocator::make_relocation_code(const section_data::relocation& r
 
 	default:
 		throw std::runtime_error(std::string("ARM RELOC ERROR: Unhandled relocation type ").append(std::to_string(relocation.type)));
+
 	}
 }
 
