@@ -4,6 +4,32 @@
 
 namespace lyn {
 
+event_section& event_section::operator = (const event_section& other) {
+	mCodeMap.resize(other.mCodeMap.size());
+	mCodes.clear();
+
+	int currentOffset = 0;
+
+	while (currentOffset < mCodeMap.size()) {
+		int size = other.mCodes[other.mCodeMap[currentOffset]].code_size();
+		set_code(currentOffset, event_code(other.mCodes[other.mCodeMap[currentOffset]]));
+		currentOffset += size;
+	}
+}
+
+event_section& event_section::operator = (event_section&& other) {
+	resize(other.mCodeMap.size());
+	mCodes.clear();
+
+	int currentOffset = 0;
+
+	while (currentOffset < mCodeMap.size()) {
+		int size = other.mCodes[other.mCodeMap[currentOffset]].code_size();
+		set_code(currentOffset, std::move(other.mCodes[other.mCodeMap[currentOffset]]));
+		currentOffset += size;
+	}
+}
+
 void event_section::write_to_stream(std::ostream& output) const {
 	for (int pos = 0; pos < mCodeMap.size();) {
 		const event_code& code = mCodes[mCodeMap[pos]];
@@ -59,17 +85,7 @@ void event_section::compress_codes() {
 }
 
 void event_section::optimize() {
-	event_section other;
-
-	other.resize(mCodeMap.size());
-
-	int currentOffset = 0;
-
-	while (currentOffset < mCodeMap.size()) {
-		int size = mCodes[mCodeMap[currentOffset]].code_size();
-		other.set_code(currentOffset, std::move(mCodes[mCodeMap[currentOffset]]));
-		currentOffset += size;
-	}
+	event_section other(*this);
 
 	mCodeMap = std::move(other.mCodeMap);
 	mCodes   = std::move(other.mCodes);
