@@ -50,7 +50,7 @@ void event_section::compress_codes() {
 		auto& nextCode = mCodes[mCodeMap[currentOffset + code.code_size()]];
 
 		if (code.can_combine_with(nextCode)) {
-			code.combine_with(nextCode);
+			code.combine_with(std::move(nextCode));
 
 			for (int i=0; i<code.code_size(); ++i)
 				mCodeMap[currentOffset + i] = index;

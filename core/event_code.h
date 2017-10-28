@@ -29,7 +29,7 @@ public:
 	unsigned int code_align() const;
 
 	bool can_combine_with(const event_code& other) const;
-	void combine_with(const event_code& other);
+	void combine_with(event_code&& other);
 
 private:
 	int mCodeType;

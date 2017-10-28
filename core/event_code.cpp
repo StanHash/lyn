@@ -79,13 +79,19 @@ bool event_code::can_combine_with(const event_code& other) const {
 	return (mCodeType == other.mCodeType);
 }
 
-void event_code::combine_with(const event_code& other) {
+void event_code::combine_with(event_code&& other) {
 	if (!can_combine_with(other))
 		throw std::runtime_error(std::string("EVENT CODE: tried combining the following codes:\n\t")
 								 .append(get_code_string()).append("\n\t")
 								 .append(other.get_code_string()).append("\n"));
 
-	mArguments.insert(mArguments.end(), other.mArguments.begin(), other.mArguments.end());
+	mArguments.reserve(mArguments.size() + other.mArguments.size());
+
+	std::copy(
+		std::make_move_iterator(other.mArguments.begin()),
+		std::make_move_iterator(other.mArguments.end()),
+		std::back_inserter(mArguments)
+	);
 }
 
 } // namespace lyn
