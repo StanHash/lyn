@@ -4,8 +4,6 @@
 
 namespace lyn {
 
-event_section::event_section() {}
-
 void event_section::write_to_stream(std::ostream& output) const {
 	for (int pos = 0; pos < mCodeMap.size();) {
 		const event_code& code = mCodes[mCodeMap[pos]];
