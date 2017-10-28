@@ -9,8 +9,6 @@ namespace lyn {
 
 class event_section {
 public:
-	event_section();
-
 	void write_to_stream(std::ostream& output) const;
 
 	void resize(unsigned int size);

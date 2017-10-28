@@ -2,6 +2,7 @@
 #define EVENT_OBJECT_H
 
 #include "elf/elf_file.h"
+#include "arm_relocator.h"
 #include "section_data.h"
 
 namespace lyn {
@@ -15,6 +16,7 @@ protected:
 	static std::string make_relocation_string(const std::string& symbol, int addend);
 
 private:
+	arm_relocator mRelocator;
 	std::vector<section_data> mSectionDatas;
 };
 

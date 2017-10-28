@@ -26,6 +26,9 @@ set(SOURCE_LIST
 
     event_object.h
     event_object.cpp
+
+    arm_relocator.h
+    arm_relocator.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_LIST})

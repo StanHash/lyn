@@ -3,6 +3,7 @@
 
 #include "core/binary_file.h"
 #include "elf/elf_file.h"
+#include "core/event_section.h"
 
 namespace lyn {
 
@@ -36,7 +37,11 @@ public:
 	};
 
 public:
-	void write_events(std::ostream& output) const;
+	const std::string& name() const { return mName; }
+	const std::vector<relocation>& relocations() const { return mRelocations; }
+	const std::vector<symbol>& symbols() const { return mSymbols; }
+
+	event_section make_events() const;
 
 	int mapping_type_at(unsigned int offset) const;
 

@@ -24,106 +24,47 @@ std::string toHexDigits(std::uint32_t value, int digits) {
 	return result;
 }
 
-void section_data::write_events(std::ostream& output) const {
-	lyn::event_section eventSection;
-	eventSection.resize(mData.size());
-
-	// TODO: assert(!sectionData.mappings.empty());
-
-	// TODO: make_relocation_string but better
-	auto make_relocation_string = [] (const std::string& symbol, int addend) {
-		if (addend == 0)
-			return symbol;
-
-		if (addend < 0)
-			return std::string("(").append(symbol).append(" - ").append(std::to_string(-addend)).append(")");
-
-		return std::string("(").append(symbol).append(" + ").append(std::to_string(addend)).append(")");
-	};
+event_section section_data::make_events() const {
+	event_section result;
+	result.resize(mData.size());
 
 	auto mappingIt = mMappings.begin();
 	int currentMappingType = mapping::Data;
 
-	for (int i=0; i<mData.size();) {
-		if (mappingIt != mMappings.end() && (mappingIt->offset <= i))
+	int pos = 0;
+
+	while (pos < mData.size()) {
+		if (mappingIt != mMappings.end() && (mappingIt->offset <= pos))
 			currentMappingType = (mappingIt++)->type;
 
 		switch (currentMappingType) {
 		case mapping::Data:
-			eventSection.set_code(i, lyn::event_code(
+			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_BYTE,
-				std::string("0x").append(toHexDigits(mData.byte_at(i), 2))
+				std::string("0x").append(toHexDigits(mData.byte_at(pos), 2))
 			));
-			i++;
+			pos++;
 			break;
 
 		case mapping::Thumb:
-			eventSection.set_code(i, lyn::event_code(
+			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_SHORT,
-				std::string("0x").append(toHexDigits(mData.at<std::uint16_t>(i), 4))
+				std::string("0x").append(toHexDigits(mData.at<std::uint16_t>(pos), 4))
 			));
-			i += 2;
+			pos += 2;
 			break;
 
 		case mapping::ARM:
-			eventSection.set_code(i, lyn::event_code(
+			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_WORD,
-				std::string("0x").append(toHexDigits(mData.at<std::uint32_t>(i), 8))
+				std::string("0x").append(toHexDigits(mData.at<std::uint32_t>(pos), 8))
 			));
-			i += 4;
+			pos += 4;
 			break;
 		}
 	}
 
-	for (auto& reloc : mRelocations) {
-		switch (reloc.type) {
-
-		case 0x02: // R_ARM_ABS32 (POIN Symbol + Addend)
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_POIN, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		case 0x03: // R_ARM_REL32 (WORD Symbol + Addend - CURRENTOFFSET) // FIXME
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_WORD, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		case 0x05: // R_ARM_ABS16 (SHORT Symbol + Addend)
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_SHORT, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		case 0x08: // R_ARM_ABS8 (BYTE Symbol + Addend)
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_BYTE, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		case 0x09: // R_ARM_SBREL32 (WORD Symbol + Addend) (POIN Symbol + Addend - 0x8000000) // FIXME
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::CODE_WORD, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		case 0x0A: // R_ARM_THM_CALL (BL)
-			eventSection.set_code(reloc.offset, lyn::event_code(lyn::event_code::MACRO_BL, make_relocation_string(reloc.symbol, reloc.addend)));
-			break;
-
-		}
-	}
-
-	eventSection.compress_codes();
-	eventSection.optimize();
-
-	output << "// section " << mName << std::endl << std::endl;
-
-	if (!mSymbols.empty()) {
-		output << "PUSH" << std::endl;
-		int currentOffset = 0;
-
-		for (auto& symbol : mSymbols) {
-			output << "ORG (CURRENTOFFSET + 0x" << (symbol.offset - currentOffset) << "); "
-				   << symbol.name << ":" << std::endl;
-			currentOffset = symbol.offset;
-		}
-
-		output << "POP" << std::endl;
-	}
-
-	eventSection.write_to_stream(output);
+	return result;
 }
 
 int section_data::mapping_type_at(unsigned int offset) const {
