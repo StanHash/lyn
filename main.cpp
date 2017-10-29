@@ -24,8 +24,6 @@ int main(int argc, char** argv) {
 		return 1;
 
 	try {
-		std::cout << std::hex;
-
 		lyn::event_object object;
 
 		object.load_from_elf(make_elf(argv[1]));

@@ -8,7 +8,13 @@
 namespace lyn {
 
 void event_object::load_from_elf(const elf_file& elfFile) {
-	mSectionDatas = section_data::make_from_elf(elfFile);
+	auto newList = section_data::make_from_elf(elfFile);
+
+	std::copy(
+		std::make_move_iterator(newList.begin()),
+		std::make_move_iterator(newList.end()),
+		std::back_inserter(mSectionDatas)
+	);
 }
 
 void event_object::write_events(std::ostream& output) const {
@@ -21,14 +27,14 @@ void event_object::write_events(std::ostream& output) const {
 		events.compress_codes();
 		events.optimize();
 
-		output << "// section " << sectionData.name() << std::endl << std::endl;
+		// output << "// section " << sectionData.name() << std::endl << std::endl;
 
 		if (!sectionData.symbols().empty()) {
 			output << "PUSH" << std::endl;
 			int currentOffset = 0;
 
 			for (auto& symbol : sectionData.symbols()) {
-				output << "ORG (CURRENTOFFSET + 0x" << (symbol.offset - currentOffset) << "); "
+				output << "ORG (CURRENTOFFSET + 0x" << std::hex << (symbol.offset - currentOffset) << "); "
 					   << symbol.name << ":" << std::endl;
 				currentOffset = symbol.offset;
 			}
