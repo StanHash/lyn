@@ -11,7 +11,7 @@ arm_relocator::arm_relocator() {
 	mThumbVeneerTemplate.set_code(8, lyn::event_code(lyn::event_code::CODE_WORD, "0xE12FFF1C")); // bx ip
 }
 
-event_section arm_relocator::make_thumb_veneer(const std::string targetSymbol) const {
+event_section arm_relocator::make_thumb_veneer(const std::string& targetSymbol) const {
 	event_section result(mThumbVeneerTemplate);
 
 	result.set_code(0x0C, lyn::event_code(lyn::event_code::CODE_POIN, targetSymbol));
@@ -82,7 +82,7 @@ std::string arm_relocator::rel_reloc_string(const std::string& symbol, int adden
 	return result;
 }
 
-std::string arm_relocator::bl_value_string(const std::string& symbol, int addend) const {
+std::string arm_relocator::pcrel_reloc_string(const std::string& symbol, int addend) const {
 	return rel_reloc_string(symbol, addend-4);
 }
 
@@ -109,11 +109,11 @@ std::string arm_relocator::bl_op2_string(const std::string& valueString) const {
 }
 
 lyn::event_code arm_relocator::bl_code(const std::string& symbol, int addend) const {
-	std::string blValue = bl_value_string(symbol, addend);
+	std::string value = pcrel_reloc_string(symbol, addend);
 
 	return lyn::event_code(lyn::event_code::CODE_SHORT, {
-		bl_op1_string(blValue),
-		bl_op2_string(blValue)
+		bl_op1_string(value),
+		bl_op2_string(value)
 	}, lyn::event_code::ALLOW_NONE);
 }
 

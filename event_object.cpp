@@ -34,7 +34,7 @@ void event_object::write_events(std::ostream& output) const {
 			int currentOffset = 0;
 
 			for (auto& symbol : sectionData.symbols()) {
-				output << "ORG (CURRENTOFFSET + 0x" << std::hex << (symbol.offset - currentOffset) << "); "
+				output << "ORG (CURRENTOFFSET+0x" << std::hex << (symbol.offset - currentOffset) << "); "
 					   << symbol.name << ":" << std::endl;
 				currentOffset = symbol.offset;
 			}
