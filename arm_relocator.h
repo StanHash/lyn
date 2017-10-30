@@ -17,6 +17,12 @@ protected:
 	std::string abs_reloc_string(const std::string& symbol, int addend) const;
 	std::string rel_reloc_string(const std::string& symbol, int addend) const;
 
+	std::string bl_value_string(const std::string& symbol, int addend) const;
+	std::string bl_op1_string(const std::string& valueString) const;
+	std::string bl_op2_string(const std::string& valueString) const;
+
+	lyn::event_code bl_code(const std::string& symbol, int addend) const;
+
 private:
 	event_section mThumbVeneerTemplate;
 };

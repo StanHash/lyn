@@ -13,11 +13,11 @@ std::vector<event_code::event_code_type> event_code::msCodeTypeLibrary = {
 	{ "BL",    event_code::event_code_type::Macro, 4,    2     }, // MACRO_BL   = 4
 };
 
-event_code::event_code(code_type_enum type, const std::string& argument)
-	: mCodeType(type), mArguments({ argument }) {}
+event_code::event_code(code_type_enum type, const std::string& argument, combine_policy policy)
+	: mCombinePolicy(policy), mCodeType(type), mArguments({ argument }) {}
 
-event_code::event_code(code_type_enum type, const std::initializer_list<std::string>& arguments)
-	: mCodeType(type), mArguments(arguments) {}
+event_code::event_code(code_type_enum type, const std::initializer_list<std::string>& arguments, combine_policy policy)
+	: mCombinePolicy(policy), mCodeType(type), mArguments(arguments) {}
 
 std::string event_code::get_code_string() const {
 	int reserve = code_name().size() + 2;
@@ -76,7 +76,9 @@ bool event_code::can_combine_with(const event_code& other) const {
 	if (msCodeTypeLibrary[mCodeType].type == event_code_type::Macro)
 		return false;
 
-	return (mCodeType == other.mCodeType);
+	return (mCodeType == other.mCodeType)
+		&& (mCombinePolicy & ALLOW_WITH_NEXT)
+		&& (other.mCombinePolicy & ALLOW_WITH_PREV);
 }
 
 void event_code::combine_with(event_code&& other) {

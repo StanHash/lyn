@@ -16,9 +16,16 @@ public:
 		MACRO_BL
 	};
 
+	enum combine_policy {
+		ALLOW_ALL       = 0x11,
+		ALLOW_WITH_NEXT = 0x01,
+		ALLOW_WITH_PREV = 0x10,
+		ALLOW_NONE      = 0x00
+	};
+
 public:
-	event_code(code_type_enum type, const std::string& argument);
-	event_code(code_type_enum type, const std::initializer_list<std::string>& arguments);
+	event_code(code_type_enum type, const std::string& argument, combine_policy policy = ALLOW_ALL);
+	event_code(code_type_enum type, const std::initializer_list<std::string>& arguments, combine_policy policy = ALLOW_ALL);
 
 	std::string get_code_string() const;
 	void write_to_stream(std::ostream& output) const;
@@ -32,6 +39,7 @@ public:
 	void combine_with(event_code&& other);
 
 private:
+	combine_policy mCombinePolicy;
 	int mCodeType;
 	std::vector<std::string> mArguments;
 
