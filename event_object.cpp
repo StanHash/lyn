@@ -144,13 +144,54 @@ void event_object::make_trampolines() {
 	combine_with(std::move(trampolineData));
 }
 
-void event_object::link() {
+void event_object::link_locals() {
 	relocations().erase(
 		std::remove_if(
 			relocations().begin(),
 			relocations().end(),
 			[this] (const section_data::relocation& relocation) -> bool {
-				return try_relocate(relocation);
+				for (auto& symbol : symbols()) {
+					if (symbol.name != relocation.symbolName)
+						continue;
+
+					if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
+						if (!relocatelet->is_absolute()) {
+							relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
+							return true;
+						}
+					}
+
+					return false;
+				}
+
+				return false;
+			}
+		),
+		relocations().end()
+	);
+}
+
+void event_object::link_absolutes() {
+	relocations().erase(
+		std::remove_if(
+			relocations().begin(),
+			relocations().end(),
+			[this] (const section_data::relocation& relocation) -> bool {
+				for (auto& symbol : mAbsoluteSymbols) {
+					if (symbol.name != relocation.symbolName)
+						continue;
+
+					if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
+						if (relocatelet->is_absolute()) {
+							relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
+							return true;
+						}
+					}
+
+					return false;
+				}
+
+				return false;
 			}
 		),
 		relocations().end()
@@ -167,7 +208,7 @@ void event_object::write_events(std::ostream& output) const {
 			throw std::runtime_error(std::string("RELOC ERROR: Unhandled relocation type ").append(std::to_string(relocation.type)));
 	}
 
-	// events.compress_codes();
+	events.compress_codes();
 	events.optimize();
 
 	if (!symbols().empty()) {
@@ -184,38 +225,6 @@ void event_object::write_events(std::ostream& output) const {
 	}
 
 	events.write_to_stream(output);
-}
-
-bool event_object::try_relocate(const section_data::relocation& relocation) {
-	for (auto& symbol : symbols()) {
-		if (symbol.name != relocation.symbolName)
-			continue;
-
-		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
-			if (!relocatelet->is_absolute()) {
-				relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	for (auto& symbol : mAbsoluteSymbols) {
-		if (symbol.name != relocation.symbolName)
-			continue;
-
-		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
-			if (relocatelet->is_absolute()) {
-				relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	return false;
 }
 
 } // namespace lyn

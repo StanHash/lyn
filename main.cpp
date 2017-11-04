@@ -23,15 +23,66 @@ int main(int argc, char** argv) {
 	if (argc < 2)
 		return 1;
 
+	struct {
+		bool linkLocals      = true;
+		bool linkAbsolutes   = true;
+		bool makeTrampolines = false;
+		bool printTemporary  = false;
+	} options;
+
+	std::vector<std::string> elves;
+
+	for (int i=0; i<argc; ++i) {
+		std::string argument(argv[i]);
+
+		if (argument.size() == 0)
+			continue;
+
+		if (argument[0] == '-') { // option
+			if (argument == "-nolink") {
+				options.linkLocals      = false;
+				options.linkAbsolutes   = false;
+			} else if (argument == "-linkabs") {
+				options.linkLocals      = false;
+				options.linkAbsolutes   = true;
+			} else if (argument == "-linkall") {
+				options.linkLocals      = true;
+				options.linkAbsolutes   = true;
+			} else if (argument == "-longcalls") {
+				options.makeTrampolines = true;
+			} else if (argument == "-raw") {
+				options.linkLocals      = false;
+				options.linkAbsolutes   = false;
+				options.makeTrampolines = false;
+			} else if (argument == "-printtemp") {
+				options.printTemporary  = true;
+			}
+		} else { // elf
+			elves.push_back(std::move(argument));
+		}
+	}
+
 	try {
 		lyn::event_object object;
 
-		for (int i=1; i<argc; ++i)
-			object.append_from_elf(make_elf(argv[i]));
+		for (auto& elf : elves) {
+			object.append_from_elf(make_elf(elf));
 
-		object.make_trampolines();
-		object.link();
-		object.remove_local_symbols();
+			if (options.linkLocals)
+				object.link_locals();
+
+			if (options.makeTrampolines) {
+				object.make_trampolines();
+
+				if (!options.printTemporary) {
+					object.link_locals();
+					object.remove_local_symbols();
+				}
+			}
+		}
+
+		if (options.linkAbsolutes)
+			object.link_absolutes();
 
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {
