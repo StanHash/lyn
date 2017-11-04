@@ -7,17 +7,18 @@
 
 namespace lyn {
 
-class event_object {
+class event_object : public section_data {
 public:
-	void load_from_elf(const lyn::elf_file& elfFile);
+	void append_from_elf(const lyn::elf_file& elfFile);
+	void link();
 	void write_events(std::ostream& output) const;
 
-protected:
-	static std::string make_relocation_string(const std::string& symbol, int addend);
+	bool try_relocate(const section_data::relocation& relocation);
 
 private:
 	arm_relocator mRelocator;
-	std::vector<section_data> mSectionDatas;
+
+	std::vector<section_data::symbol> mAbsoluteSymbols;
 };
 
 } // namespace lyn

@@ -26,10 +26,14 @@ int main(int argc, char** argv) {
 	try {
 		lyn::event_object object;
 
-		object.load_from_elf(make_elf(argv[1]));
+		for (int i=1; i<argc; ++i)
+			object.append_from_elf(make_elf(argv[i]));
+
+		object.link();
+
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {
-		std::cerr << "err... " << e.what() << std::endl;
+		std::cerr << "[lyn] err... " << e.what() << std::endl;
 	}
 
 	return 0;

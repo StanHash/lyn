@@ -33,6 +33,11 @@ public:
 	byte_t read_byte(int& pos) const;
 	byte_t byte_at(int pos) const { return read_byte(pos); }
 
+	template<typename T, int byte_count = sizeof(T)>
+	void write(int pos, T value);
+
+	void write_byte(int pos, byte_t value);
+
 private:
 	std::vector<byte_t> mData;
 };
@@ -45,6 +50,12 @@ T binary_file::read(int& pos) const {
 		result |= (read_byte(pos) << (i*8));
 
 	return result;
+}
+
+template<typename T, int byte_count = sizeof(T)>
+void binary_file::write(int pos, T value) {
+	for (int i=0; i<byte_count; ++i)
+		write_byte(pos + i, (value >> (i*8)) & 0xFF);
 }
 
 } // namespace lyn
