@@ -37,8 +37,6 @@ void event_section::write_to_stream(std::ostream& output) const {
 		output << code << std::endl; // TODO: add support for non-endl code separator (';' specifically)
 		pos += code.code_size();
 	}
-
-	output << std::endl;
 }
 
 void event_section::resize(unsigned int size) {

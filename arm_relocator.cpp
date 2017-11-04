@@ -145,22 +145,22 @@ std::string arm_relocator::pcrel_reloc_string(const std::string& symbol, int add
 
 std::string arm_relocator::bl_op1_string(const std::string &valueString) {
 	std::string result;
-	result.reserve(3 + 20 + valueString.size());
+	result.reserve(3 + 18 + valueString.size());
 
 	result.append("(((");
 	result.append(valueString);
-	result.append(">>12)&0x7FF)|0xF000)");
+	result.append(">>12)&$7FF)|$F000)");
 
 	return result;
 }
 
 std::string arm_relocator::bl_op2_string(const std::string& valueString) {
 	std::string result;
-	result.reserve(3 + 19 + valueString.size());
+	result.reserve(3 + 17 + valueString.size());
 
 	result.append("(((");
 	result.append(valueString);
-	result.append(">>1)&0x7FF)|0xF800)");
+	result.append(">>1)&$7FF)|$F800)");
 
 	return result;
 }
