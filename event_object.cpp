@@ -198,6 +198,24 @@ void event_object::link_absolutes() {
 	);
 }
 
+std::vector<event_object::hook> event_object::get_hooks() const {
+	std::vector<hook> result;
+
+	for (auto& absSymbol : mAbsoluteSymbols) {
+		if (!(absSymbol.offset & 0x8000000))
+			continue; // Not in ROM
+
+		for (auto& locSymbol : symbols()) {
+			if (absSymbol.name != locSymbol.name)
+				continue; // Not same symbol
+
+			result.push_back({ (absSymbol.offset & (~0x8000000)), absSymbol.name });
+		}
+	}
+
+	return result;
+}
+
 void event_object::write_events(std::ostream& output) const {
 	event_section events = make_events();
 

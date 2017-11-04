@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
 		bool linkAbsolutes   = true;
 		bool makeTrampolines = false;
 		bool printTemporary  = false;
+		bool applyHooks      = true;
 	} options;
 
 	std::vector<std::string> elves;
@@ -54,8 +55,11 @@ int main(int argc, char** argv) {
 				options.linkLocals      = false;
 				options.linkAbsolutes   = false;
 				options.makeTrampolines = false;
+				options.applyHooks      = false;
 			} else if (argument == "-printtemp") {
 				options.printTemporary  = true;
+			} else if (argument == "-autohook") {
+				options.applyHooks      = true;
 			}
 		} else { // elf
 			elves.push_back(std::move(argument));
@@ -83,6 +87,17 @@ int main(int argc, char** argv) {
 
 		if (options.linkAbsolutes)
 			object.link_absolutes();
+
+		if (options.applyHooks) {
+			for (auto& hook : object.get_hooks()) {
+				std::cout << "PUSH" << std::endl;
+				std::cout << "ORG $" << std::hex << (hook.originalOffset & (~1)) << std::endl;
+				lyn::event_object temp;
+				temp.combine_with(lyn::arm_relocator::make_thumb_veneer(hook.name, 0));
+				temp.write_events(std::cout);
+				std::cout << "POP" << std::endl;
+			}
+		}
 
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {
