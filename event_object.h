@@ -18,8 +18,6 @@ public:
 
 	void write_events(std::ostream& output) const;
 
-	bool try_relocate(const section_data::relocation& relocation);
-
 private:
 	arm_relocator mRelocator;
 

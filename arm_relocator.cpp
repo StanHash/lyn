@@ -87,11 +87,11 @@ struct arm_thumb_bl_reloc : public arm_relocator::relocatelet {
 };
 
 arm_relocator::arm_relocator() {
-	mRelocatelets[0x02].reset(new arm_data_abs32_reloc);
-	mRelocatelets[0x03].reset(new arm_data_rel32_reloc);
-	mRelocatelets[0x05].reset(new arm_data_abs16_reloc);
-	mRelocatelets[0x06].reset(new arm_data_abs8_reloc);
-	mRelocatelets[0x0A].reset(new arm_thumb_bl_reloc);
+	mRelocatelets[0x02].reset(new arm_data_abs32_reloc); // R_ARM_ABS32
+	mRelocatelets[0x03].reset(new arm_data_rel32_reloc); // R_ARM_REL32
+	mRelocatelets[0x05].reset(new arm_data_abs16_reloc); // R_ARM_ABS16
+	mRelocatelets[0x06].reset(new arm_data_abs8_reloc);  // R_ARM_ABS8
+	mRelocatelets[0x0A].reset(new arm_thumb_bl_reloc);   // R_ARM_THM_CALL
 }
 
 const arm_relocator::relocatelet* arm_relocator::get_relocatelet(int relocationIndex) const {
