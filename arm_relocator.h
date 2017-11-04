@@ -35,12 +35,9 @@ public:
 	static std::string bl_op1_string(const std::string& valueString);
 	static std::string bl_op2_string(const std::string& valueString);
 
-	static lyn::event_code bl_code(const std::string& symbol, int addend);
 	static section_data make_thumb_veneer(const std::string& symbol, int addend);
 
 private:
-	section_data mThumbVeneerTemplate;
-
 	std::map<int, std::unique_ptr<relocatelet>> mRelocatelets;
 };
 
