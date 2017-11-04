@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
 	std::vector<std::string> elves;
 
-	for (int i=0; i<argc; ++i) {
+	for (int i=1; i<argc; ++i) {
 		std::string argument(argv[i]);
 
 		if (argument.size() == 0)
