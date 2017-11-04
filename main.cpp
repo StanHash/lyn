@@ -29,7 +29,9 @@ int main(int argc, char** argv) {
 		for (int i=1; i<argc; ++i)
 			object.append_from_elf(make_elf(argv[i]));
 
+		object.make_trampolines();
 		object.link();
+		object.remove_local_symbols();
 
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {

@@ -23,6 +23,7 @@ public:
 	struct symbol {
 		std::string name;
 		unsigned int offset;
+		bool isLocal;
 	};
 
 	struct relocation {
@@ -55,6 +56,8 @@ public:
 
 	void combine_with(const section_data& other);
 	void combine_with(section_data&& other);
+
+	void remove_local_symbols();
 
 private:
 	std::string mName;

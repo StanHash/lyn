@@ -10,6 +10,9 @@ namespace lyn {
 class event_object : public section_data {
 public:
 	void append_from_elf(const lyn::elf_file& elfFile);
+
+
+	void make_trampolines();
 	void link();
 	void write_events(std::ostream& output) const;
 

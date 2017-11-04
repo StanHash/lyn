@@ -40,7 +40,7 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 				if (sym.st_shndx >= newSections.size()) {
 					if ((sym.st_shndx == elf::SHN_ABS) && (sym.bind() == elf::STB_GLOBAL))
-						mAbsoluteSymbols.push_back({ elfFile.string(nameElfSection, sym.st_name), sym.st_value });
+						mAbsoluteSymbols.push_back({ elfFile.string(nameElfSection, sym.st_name), sym.st_value, false });
 					continue;
 				}
 
@@ -56,7 +56,7 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 					// sym.st_value &= ~1; // remove eventual thumb bit
 				case elf::STT_OBJECT: {
 					if (sym.bind() == elf::STB_GLOBAL)
-						sectionData.symbols().push_back({ symbolName, sym.st_value });
+						sectionData.symbols().push_back({ symbolName, sym.st_value, false });
 
 					break;
 				}
@@ -122,6 +122,28 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 		combine_with(std::move(newSection));
 }
 
+void event_object::make_trampolines() {
+	section_data trampolineData;
+
+	for (auto& relocation : relocations()) {
+		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
+			if (!relocatelet->is_absolute() && relocatelet->can_make_trampoline()) {
+				std::string renamed = std::string("LYN_PROXY_").append(relocation.symbolName);
+
+				section_data newData = relocatelet->make_trampoline(relocation.symbolName, relocation.addend);
+				newData.symbols().push_back({ renamed, (newData.mapping_type_at(0) == section_data::mapping::Thumb), true });
+
+				trampolineData.combine_with(std::move(newData));
+
+				relocation.symbolName = renamed;
+				relocation.addend = 0;
+			}
+		}
+	}
+
+	combine_with(std::move(trampolineData));
+}
+
 void event_object::link() {
 	relocations().erase(
 		std::remove_if(
@@ -145,7 +167,7 @@ void event_object::write_events(std::ostream& output) const {
 			throw std::runtime_error(std::string("RELOC ERROR: Unhandled relocation type ").append(std::to_string(relocation.type)));
 	}
 
-	events.compress_codes();
+	// events.compress_codes();
 	events.optimize();
 
 	if (!symbols().empty()) {

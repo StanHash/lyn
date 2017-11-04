@@ -146,4 +146,17 @@ void section_data::combine_with(section_data&& other) {
 	);
 }
 
+void section_data::remove_local_symbols() {
+	symbols().erase(
+		std::remove_if(
+			symbols().begin(),
+			symbols().end(),
+			[] (const section_data::symbol& symbol) -> bool {
+				return symbol.isLocal;
+			}
+		),
+		symbols().end()
+	);
+}
+
 } // namespace lyn
