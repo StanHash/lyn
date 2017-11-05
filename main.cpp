@@ -101,7 +101,8 @@ int main(int argc, char** argv) {
 
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {
-		std::cerr << "[lyn] err... " << e.what() << std::endl;
+		std::cout << "ERROR: [lyn] " << e.what() << std::endl;
+		return 1;
 	}
 
 	return 0;

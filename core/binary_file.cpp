@@ -48,14 +48,14 @@ const char* binary_file::cstr_at(int pos) const {
 
 binary_file::byte_t binary_file::read_byte(int& pos) const {
 	if (pos >= mData.size())
-		throw std::out_of_range("aa"); // TODO
+		throw std::out_of_range("tried to read byte out of range of data");
 
 	return mData[pos++];
 }
 
 void binary_file::write_byte(int pos, byte_t value) {
 	if (pos >= mData.size())
-		throw std::out_of_range("aaa"); // TODO
+		throw std::out_of_range("tried to write byte out of range of data");
 
 	mData[pos] = value;
 }
