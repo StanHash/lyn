@@ -60,6 +60,8 @@ int main(int argc, char** argv) {
 				options.printTemporary  = true;
 			} else if (argument == "-autohook") {
 				options.applyHooks      = true;
+			} else if (argument == "-nohook") {
+				options.applyHooks      = false;
 			}
 		} else { // elf
 			elves.push_back(std::move(argument));
