@@ -118,8 +118,10 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 	// Create the ultimate lifeform
 
-	for (auto& newSection : newSections)
+	for (auto& newSection : newSections) {
 		combine_with(std::move(newSection));
+		ensure_aligned(4);
+	}
 }
 
 void event_object::make_trampolines() {
@@ -129,11 +131,18 @@ void event_object::make_trampolines() {
 		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
 			if (!relocatelet->is_absolute() && relocatelet->can_make_trampoline()) {
 				std::string renamed = std::string("LYN_PROXY_").append(relocation.symbolName);
+				bool exists = false;
 
-				section_data newData = relocatelet->make_trampoline(relocation.symbolName, relocation.addend);
-				newData.symbols().push_back({ renamed, (newData.mapping_type_at(0) == section_data::mapping::Thumb), true });
+				for (auto& sym : symbols())
+					if (sym.name == renamed)
+						exists = true;
 
-				trampolineData.combine_with(std::move(newData));
+				if (!exists) {
+					section_data newData = relocatelet->make_trampoline(relocation.symbolName, relocation.addend);
+					newData.symbols().push_back({ renamed, (newData.mapping_type_at(0) == section_data::mapping::Thumb), true });
+
+					trampolineData.combine_with(std::move(newData));
+				}
 
 				relocation.symbolName = renamed;
 				relocation.addend = 0;
@@ -142,6 +151,36 @@ void event_object::make_trampolines() {
 	}
 
 	combine_with(std::move(trampolineData));
+}
+
+void event_object::link_temporaries() {
+	relocations().erase(
+		std::remove_if(
+			relocations().begin(),
+			relocations().end(),
+			[this] (const section_data::relocation& relocation) -> bool {
+				for (auto& symbol : symbols()) {
+					if (!symbol.isLocal)
+						continue;
+
+					if (symbol.name != relocation.symbolName)
+						continue;
+
+					if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
+						if (!relocatelet->is_absolute()) {
+							relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
+							return true;
+						}
+					}
+
+					return false;
+				}
+
+				return false;
+			}
+		),
+		relocations().end()
+	);
 }
 
 void event_object::link_locals() {

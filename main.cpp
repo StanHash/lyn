@@ -71,20 +71,18 @@ int main(int argc, char** argv) {
 	try {
 		lyn::event_object object;
 
-		for (auto& elf : elves) {
+		for (auto& elf : elves)
 			object.append_from_elf(make_elf(elf));
 
-			if (options.linkLocals)
-				object.link_locals();
+		if (options.linkLocals)
+			object.link_locals();
 
-			if (options.makeTrampolines) {
-				object.make_trampolines();
+		if (options.makeTrampolines)
+			object.make_trampolines();
 
-				if (!options.printTemporary) {
-					object.link_locals();
-					object.remove_local_symbols();
-				}
-			}
+		if (!options.printTemporary) {
+			object.link_temporaries();
+			object.remove_temp_symbols();
 		}
 
 		if (options.linkAbsolutes)

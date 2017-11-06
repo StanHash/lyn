@@ -33,6 +33,11 @@ void binary_file::load_from_other(const binary_file &other, unsigned int start, 
 	);
 }
 
+void binary_file::ensure_aligned(int align) {
+	if (int off = (size() % align))
+		resize(size() + (align - off));
+}
+
 bool binary_file::is_cstr_at(int pos) const {
 	do {
 		if (mData[pos] == 0)

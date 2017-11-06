@@ -20,6 +20,7 @@ public:
 	void make_trampolines();
 
 	void link_locals();
+	void link_temporaries();
 	void link_absolutes();
 
 	std::vector<hook> get_hooks() const;

@@ -16,7 +16,10 @@ public:
 	void load_from_stream(std::istream& input);
 	void load_from_other(const binary_file& other, unsigned int start = 0, int size = -1);
 
+	void resize(unsigned int newSize) { mData.resize(newSize); }
 	size_t size() const { return mData.size(); }
+
+	void ensure_aligned(int align);
 
 	bool is_cstr_at(int pos) const;
 	const char* cstr_at(int pos) const;

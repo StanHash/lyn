@@ -146,7 +146,7 @@ void section_data::combine_with(section_data&& other) {
 	);
 }
 
-void section_data::remove_local_symbols() {
+void section_data::remove_temp_symbols() {
 	symbols().erase(
 		std::remove_if(
 			symbols().begin(),
