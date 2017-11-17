@@ -26,7 +26,7 @@ lyn [-nolink/-linkabs/-linkall] [-longcalls] [-raw] [-printtemp] [-autohook/-noh
 - Bugfixes (always)
 - Code cleanup (kinda want to have my mini `elf` library to be a bit more clean and such)
 - Support for more relocations (such as `ARM` relocations (`lyn` currently only supports a handful of `thumb` & `data` ones))
-- Maybe support for output formats? I'm thinking [`json-bpatch`](https://github.com/zahlman/json_bpatch) since zahl himself mentionned being interested, or maybe also the ability to write directly to target binary? (Some would say heresy, but maybe then we'll finally have a proper linker that is fit for our purposes?)
-- Allowing handling not only only read-only allocated sections (`.text`, `.rodata`, etc) but also writable allocated sections (`.data`, `.bss`, etc). Idk how that'd work with EA tho.
+- Allowing handling not only only read-only allocated sections (`.text`, `.rodata`, etc) but also writable allocated sections (`.data`, `.bss`, etc). Idk how that'd work with EA tho...
+- Maybe support for other output formats? I'm thinking [`json-bpatch`](https://github.com/zahlman/json_bpatch) since zahl himself mentionned being interested, or maybe also the ability to write directly to target binary? (Some would say heresy, but maybe then we'll finally have a proper linker that is fit for our purposes?)
 
 **As always, any question or bug report can also be done by contacting me through the [FEU Thread](http://feuniverse.us/t/ea-asm-tool-lyn-elf2ea-if-you-will/2986?u=stanh) or on the [FEU Discord](http://feuniverse.us/t/feu-discord-server/1480?u=stanh).**
