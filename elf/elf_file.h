@@ -2,6 +2,7 @@
 #define ELF_FILE_H
 
 #include "raw_elf.h"
+
 #include "../core/binary_file.h"
 
 #include <vector>

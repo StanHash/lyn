@@ -2,7 +2,7 @@
 #include <fstream>
 
 #include "elf/elf_file.h"
-#include "event_object.h"
+#include "core/event_object.h"
 
 lyn::elf_file make_elf(const std::string& fName) {
 	lyn::elf_file result;

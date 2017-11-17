@@ -17,20 +17,20 @@ set(SOURCE_LIST
     elf/elf_file.h
     elf/elf_file.cpp
 
-    core/event_code.h
-    core/event_code.cpp
+    ea/event_code.h
+    ea/event_code.cpp
 
-    core/event_section.h
-    core/event_section.cpp
+    ea/event_section.h
+    ea/event_section.cpp
 
-    section_data.h
-    section_data.cpp
+    core/section_data.h
+    core/section_data.cpp
 
-    event_object.h
-    event_object.cpp
+    core/event_object.h
+    core/event_object.cpp
 
-    arm_relocator.h
-    arm_relocator.cpp
+    core/arm_relocator.h
+    core/arm_relocator.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_LIST})

@@ -2,7 +2,8 @@
 #define ARM_RELOCATOR_H
 
 #include "section_data.h"
-#include "core/event_section.h"
+
+#include "../ea/event_section.h"
 
 #include <memory>
 #include <map>

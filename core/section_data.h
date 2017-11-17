@@ -1,9 +1,10 @@
 #ifndef SECTION_DATA_H
 #define SECTION_DATA_H
 
-#include "core/binary_file.h"
-#include "elf/elf_file.h"
-#include "core/event_section.h"
+#include "binary_file.h"
+
+#include "../elf/elf_file.h"
+#include "../ea/event_section.h"
 
 namespace lyn {
 

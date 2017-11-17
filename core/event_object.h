@@ -1,9 +1,10 @@
 #ifndef EVENT_OBJECT_H
 #define EVENT_OBJECT_H
 
-#include "elf/elf_file.h"
 #include "arm_relocator.h"
 #include "section_data.h"
+
+#include "../elf/elf_file.h"
 
 namespace lyn {
 

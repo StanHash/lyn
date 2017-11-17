@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <algorithm>
 
-#include "core/event_section.h"
+#include "../ea/event_section.h"
 
 namespace lyn {
 
