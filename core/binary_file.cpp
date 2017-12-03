@@ -24,7 +24,7 @@ void binary_file::load_from_other(const binary_file &other, unsigned int start, 
 		return; // TODO: throw exception
 
 	mData.clear();
-	mData.reserve(size - start);
+	mData.reserve(size);
 
 	std::copy(
 		std::next(other.mData.begin(), start),
@@ -49,6 +49,19 @@ bool binary_file::is_cstr_at(int pos) const {
 
 const char* binary_file::cstr_at(int pos) const {
 	return reinterpret_cast<const char*>(&mData[pos]);
+}
+
+void binary_file::combine_with(const binary_file& other) {
+	// move combination here wouldn't be that useful, since we're dealing with standard raw data
+	// there's no allocation overhead in copying over moving
+
+	data().reserve(size() + other.size());
+
+	std::copy(
+		other.data().begin(),
+		other.data().end(),
+		std::back_inserter(data())
+	);
 }
 
 binary_file::byte_t binary_file::read_byte(int& pos) const {

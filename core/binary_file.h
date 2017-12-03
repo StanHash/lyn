@@ -27,6 +27,8 @@ public:
 	std::vector<byte_t>&       data()       { return mData; }
 	const std::vector<byte_t>& data() const { return mData; }
 
+	void combine_with(const binary_file& other);
+
 	template<typename T, int byte_count = sizeof(T)>
 	T read(int& pos) const;
 

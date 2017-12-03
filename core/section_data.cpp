@@ -108,13 +108,7 @@ void section_data::combine_with(const section_data& other) {
 		mRelocations.push_back(relocation);
 	}
 
-	data().reserve(size() + other.size());
-
-	std::copy(
-		other.data().begin(),
-		other.data().end(),
-		std::back_inserter(data())
-	);
+	binary_file::combine_with(other);
 }
 
 void section_data::combine_with(section_data&& other) {
@@ -137,13 +131,7 @@ void section_data::combine_with(section_data&& other) {
 		mRelocations.push_back(std::move(relocation));
 	}
 
-	data().reserve(size() + other.size());
-
-	std::copy(
-		other.data().begin(),
-		other.data().end(),
-		std::back_inserter(data())
-	);
+	binary_file::combine_with(other);
 }
 
 void section_data::remove_temp_symbols() {
