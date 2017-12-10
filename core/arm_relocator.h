@@ -15,7 +15,7 @@ public:
 	struct relocatelet {
 		virtual ~relocatelet() {}
 
-		virtual event_code make_event_code(const std::string& sym, int addend) const = 0;
+		virtual event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const = 0;
 		virtual void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const = 0;
 
 		virtual bool is_absolute() const { return true; }
@@ -33,10 +33,15 @@ public:
 	static std::string rel_reloc_string(const std::string& symbol, int addend);
 
 	static std::string pcrel_reloc_string(const std::string& symbol, int addend);
+	static std::string pcrel_arm_reloc_string(const std::string& symbol, int addend);
+
+	static std::string b24_arm_string(uint32_t base, const std::string& valueString);
+
 	static std::string bl_op1_string(const std::string& valueString);
 	static std::string bl_op2_string(const std::string& valueString);
 
 	static section_data make_thumb_veneer(const std::string& symbol, int addend);
+	static section_data make_arm_veneer(const std::string& symbol, int addend);
 
 private:
 	std::map<int, std::unique_ptr<relocatelet>> mRelocatelets;

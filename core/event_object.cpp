@@ -280,8 +280,13 @@ void event_object::write_events(std::ostream& output) const {
 
 	for (auto& relocation : relocations()) {
 		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
-			events.set_code(relocation.offset, relocatelet->make_event_code(relocation.symbolName, relocation.addend));
-		else
+			events.set_code(relocation.offset, relocatelet->make_event_code(
+				*this,
+				relocation.offset,
+				relocation.symbolName,
+				relocation.addend
+			));
+		else if (relocation.type != 40) // R_ARM_V4BX
 			throw std::runtime_error(std::string("unhandled relocation type #").append(std::to_string(relocation.type)));
 	}
 
