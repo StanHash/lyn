@@ -18,11 +18,14 @@ public:
 public:
 	void append_from_elf(const lyn::elf_file& elfFile);
 
-	void make_trampolines();
+	void try_transform_relatives();
 
-	void link_locals();
-	void link_temporaries();
-	void link_absolutes();
+	void try_relocate_relatives();
+	void try_relocate_absolutes();
+
+	void remove_unnecessary_symbols();
+
+	void cleanup();
 
 	std::vector<hook> get_hooks() const;
 

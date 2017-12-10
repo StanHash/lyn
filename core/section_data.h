@@ -58,8 +58,6 @@ public:
 	void combine_with(const section_data& other);
 	void combine_with(section_data&& other);
 
-	void remove_temp_symbols();
-
 private:
 	std::string mName;
 

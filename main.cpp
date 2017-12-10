@@ -24,11 +24,10 @@ int main(int argc, char** argv) {
 		return 1;
 
 	struct {
-		bool linkLocals      = true;
-		bool linkAbsolutes   = true;
-		bool makeTrampolines = false;
-		bool printTemporary  = false;
+		bool doLink          = true;
+		bool longCall        = false;
 		bool applyHooks      = true;
+		bool printTemporary  = false;
 	} options;
 
 	std::vector<std::string> elves;
@@ -40,28 +39,26 @@ int main(int argc, char** argv) {
 			continue;
 
 		if (argument[0] == '-') { // option
-			if (argument == "-nolink") {
-				options.linkLocals      = false;
-				options.linkAbsolutes   = false;
-			} else if (argument == "-linkabs") {
-				options.linkLocals      = false;
-				options.linkAbsolutes   = true;
-			} else if (argument == "-linkall") {
-				options.linkLocals      = true;
-				options.linkAbsolutes   = true;
+			if (argument        == "-nolink") {
+				options.doLink         = false;
+			} else if (argument == "-link") {
+				options.doLink         = true;
 			} else if (argument == "-longcalls") {
-				options.makeTrampolines = true;
+				options.longCall       = true;
+			} else if (argument == "-nolongcalls") {
+				options.longCall       = false;
 			} else if (argument == "-raw") {
-				options.linkLocals      = false;
-				options.linkAbsolutes   = false;
-				options.makeTrampolines = false;
-				options.applyHooks      = false;
-			} else if (argument == "-printtemp") {
-				options.printTemporary  = true;
-			} else if (argument == "-autohook") {
-				options.applyHooks      = true;
+				options.doLink         = false;
+				options.longCall       = false;
+				options.applyHooks     = false;
+			} else if (argument == "-temp") {
+				options.printTemporary = true;
+			} else if (argument == "-notemp") {
+				options.printTemporary = false;
+			} else if (argument == "-hook") {
+				options.applyHooks     = true;
 			} else if (argument == "-nohook") {
-				options.applyHooks      = false;
+				options.applyHooks     = false;
 			}
 		} else { // elf
 			elves.push_back(std::move(argument));
@@ -74,34 +71,37 @@ int main(int argc, char** argv) {
 		for (auto& elf : elves)
 			object.append_from_elf(make_elf(elf));
 
-		if (options.linkLocals)
-			object.link_locals();
+		if (options.doLink)
+			object.try_relocate_relatives();
 
-		if (options.makeTrampolines)
-			object.make_trampolines();
+		if (options.longCall)
+			object.try_transform_relatives();
 
-		if (!options.printTemporary) {
-			object.link_temporaries();
-			object.remove_temp_symbols();
-		}
+		if (options.doLink)
+			object.try_relocate_absolutes();
 
-		if (options.linkAbsolutes)
-			object.link_absolutes();
+		if (!options.printTemporary)
+			object.remove_unnecessary_symbols();
+
+		object.cleanup();
 
 		if (options.applyHooks) {
 			for (auto& hook : object.get_hooks()) {
+				lyn::event_object temp;
+
 				std::cout << "PUSH" << std::endl;
 				std::cout << "ORG $" << std::hex << (hook.originalOffset & (~1)) << std::endl;
-				lyn::event_object temp;
+
 				temp.combine_with(lyn::arm_relocator::make_thumb_veneer(hook.name, 0));
 				temp.write_events(std::cout);
+
 				std::cout << "POP" << std::endl;
 			}
 		}
 
 		object.write_events(std::cout);
 	} catch (const std::exception& e) {
-		std::cout << "ERROR: [lyn] " << e.what() << std::endl;
+		std::cerr << "[lyn] ERROR: " << e.what() << std::endl;
 		return 1;
 	}
 

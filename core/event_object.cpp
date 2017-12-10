@@ -4,12 +4,25 @@
 #include <algorithm>
 
 #include "../ea/event_section.h"
+#include "util.h"
 
 namespace lyn {
 
 void event_object::append_from_elf(const elf_file& elfFile) {
 	std::vector<section_data> newSections(elfFile.sections().size());
 	std::vector<bool> outMap(elfFile.sections().size(), false);
+
+	auto getLocalSymbolName = [this] (int section, int index) -> std::string {
+		std::string result;
+		result.reserve(2 + 8 + 4 + 4);
+
+		result.append("_L");
+		result.append(stan::to_hex_digits(size(),  8));
+		result.append(stan::to_hex_digits(section, 4));
+		result.append(stan::to_hex_digits(index,   4));
+
+		return result;
+	};
 
 	// Initializing written Sections from relevant elf sections
 
@@ -29,9 +42,11 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 	// Initializing labels, mappings & relocations from other elf sections
 
-	for (auto& elfSection : elfFile.sections()) {
+	for (int sectionIndex=0; sectionIndex<elfFile.sections().size(); ++sectionIndex) {
+		auto& elfSection = elfFile.sections()[sectionIndex];
+
 		if (elfSection.sh_type == elf::SHT_SYMTAB) {
-			int symbolCount = elfSection.sh_size / 0x10;
+			int symbolCount = elfSection.sh_size / elfSection.sh_entsize;
 
 			auto& nameElfSection = elfFile.sections()[elfSection.sh_link];
 
@@ -51,36 +66,28 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 				std::string symbolName = elfFile.string(nameElfSection, sym.st_name);
 
-				switch (sym.type()) {
-				case elf::STT_FUNC:
-					// sym.st_value &= ~1; // remove eventual thumb bit
-				case elf::STT_OBJECT: {
-					if (sym.bind() == elf::STB_GLOBAL)
-						sectionData.symbols().push_back({ symbolName, sym.st_value, false });
-
-					break;
-				}
-
-				case elf::STT_NOTYPE: {
-					if (sym.bind() != elf::STB_LOCAL)
-						break;
-
+				if (sym.type() == elf::STT_NOTYPE && sym.bind() == elf::STB_LOCAL) {
 					std::string subString = symbolName.substr(0, 3);
 
-					if ((symbolName == "$t") || (subString == "$t."))
+					if ((symbolName == "$t") || (subString == "$t.")) {
 						sectionData.set_mapping(sym.st_value, mapping::Thumb);
-					else if ((symbolName == "$a") || (subString == "$a."))
+						continue;
+					} else if ((symbolName == "$a") || (subString == "$a.")) {
 						sectionData.set_mapping(sym.st_value, mapping::ARM);
-					else if ((symbolName == "$d") || (subString == "$d."))
+						continue;
+					} else if ((symbolName == "$d") || (subString == "$d.")) {
 						sectionData.set_mapping(sym.st_value, mapping::Data);
-
-					break;
+						continue;
+					}
 				}
 
-				}
+				if (sym.bind() == elf::STB_LOCAL)
+					symbolName = getLocalSymbolName(sectionIndex, i);
+
+				sectionData.symbols().push_back({ symbolName, sym.st_value, (sym.bind() == elf::STB_LOCAL) });
 			}
 		} else if (elfSection.sh_type == elf::SHT_REL) {
-			int relCount = elfSection.sh_size / 0x08;
+			int relCount = elfSection.sh_size / elfSection.sh_entsize;
 
 			auto& symbolSection = elfFile.sections()[elfSection.sh_link];
 			auto& symbolNameSection = elfFile.sections()[symbolSection.sh_link];
@@ -89,12 +96,16 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 			for (int i=0; i<relCount; ++i) {
 				auto rel  = elfFile.rel(elfSection, i);
-				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rel.symId()).st_name);
+				auto sym  = elfFile.symbol(symbolSection, rel.symId());
+				std::string name = elfFile.string(symbolNameSection, sym.st_name);
+
+				if (sym.bind() == elf::STB_LOCAL)
+					name = getLocalSymbolName(elfSection.sh_link, rel.symId());
 
 				sectionData.relocations().push_back({ std::string(name), 0, rel.type(), rel.r_offset });
 			}
 		} else if (elfSection.sh_type == elf::SHT_RELA) {
-			int relCount = elfSection.sh_size / 0x0C;
+			int relCount = elfSection.sh_size / elfSection.sh_entsize;
 
 			auto& symbolSection = elfFile.sections()[elfSection.sh_link];
 			auto& symbolNameSection = elfFile.sections()[symbolSection.sh_link];
@@ -103,7 +114,11 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 			for (int i=0; i<relCount; ++i) {
 				auto rela = elfFile.rela(elfSection, i);
-				auto name = elfFile.string(symbolNameSection, elfFile.symbol(symbolSection, rela.symId()).st_name);
+				auto sym  = elfFile.symbol(symbolSection, rela.symId());
+				std::string name = elfFile.string(symbolNameSection, sym.st_name);
+
+				if (sym.bind() == elf::STB_LOCAL)
+					name = getLocalSymbolName(elfSection.sh_link, rela.symId());
 
 				sectionData.relocations().push_back({ std::string(name), rela.r_addend, rela.type(), rela.r_offset });
 			}
@@ -124,13 +139,18 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 	}
 }
 
-void event_object::make_trampolines() {
+void event_object::try_transform_relatives() {
 	section_data trampolineData;
 
 	for (auto& relocation : relocations()) {
 		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
 			if (!relocatelet->is_absolute() && relocatelet->can_make_trampoline()) {
-				std::string renamed = std::string("LYN_PROXY_").append(relocation.symbolName);
+				std::string renamed;
+				renamed.reserve(4 + relocation.symbolName.size());
+
+				renamed.append("_LP_"); // local proxy
+				renamed.append(relocation.symbolName);
+
 				bool exists = false;
 
 				for (auto& sym : symbols())
@@ -153,37 +173,7 @@ void event_object::make_trampolines() {
 	combine_with(std::move(trampolineData));
 }
 
-void event_object::link_temporaries() {
-	relocations().erase(
-		std::remove_if(
-			relocations().begin(),
-			relocations().end(),
-			[this] (const section_data::relocation& relocation) -> bool {
-				for (auto& symbol : symbols()) {
-					if (!symbol.isLocal)
-						continue;
-
-					if (symbol.name != relocation.symbolName)
-						continue;
-
-					if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
-						if (!relocatelet->is_absolute()) {
-							relocatelet->apply_relocation(*this, relocation.offset, symbol.offset, relocation.addend);
-							return true;
-						}
-					}
-
-					return false;
-				}
-
-				return false;
-			}
-		),
-		relocations().end()
-	);
-}
-
-void event_object::link_locals() {
+void event_object::try_relocate_relatives() {
 	relocations().erase(
 		std::remove_if(
 			relocations().begin(),
@@ -210,7 +200,7 @@ void event_object::link_locals() {
 	);
 }
 
-void event_object::link_absolutes() {
+void event_object::try_relocate_absolutes() {
 	relocations().erase(
 		std::remove_if(
 			relocations().begin(),
@@ -234,6 +224,36 @@ void event_object::link_absolutes() {
 			}
 		),
 		relocations().end()
+	);
+}
+
+void event_object::remove_unnecessary_symbols() {
+	symbols().erase(
+		std::remove_if(
+			symbols().begin(),
+			symbols().end(),
+			[this] (const section_data::symbol& symbol) -> bool {
+				if (!symbol.isLocal)
+					return false; // symbol may be used outside of the scope of this object
+
+				for (auto& reloc : relocations())
+					if (reloc.symbolName == symbol.name)
+						return false; // a relocation is dependant on this symbol
+
+				return true; // symbol is local and unused, we can remove it safely (hopefully)
+			}
+		),
+		symbols().end()
+	);
+}
+
+void event_object::cleanup() {
+	std::sort(
+		symbols().begin(),
+		symbols().end(),
+		[] (const section_data::symbol& a, const section_data::symbol& b) -> bool {
+			return a.offset < b.offset;
+		}
 	);
 }
 
@@ -262,26 +282,51 @@ void event_object::write_events(std::ostream& output) const {
 		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
 			events.set_code(relocation.offset, relocatelet->make_event_code(relocation.symbolName, relocation.addend));
 		else
-			throw std::runtime_error(std::string("RELOC ERROR: Unhandled relocation type ").append(std::to_string(relocation.type)));
+			throw std::runtime_error(std::string("unhandled relocation type #").append(std::to_string(relocation.type)));
 	}
 
 	events.compress_codes();
 	events.optimize();
 
-	if (!symbols().empty()) {
+	if (std::any_of(symbols().begin(), symbols().end(), [] (const section_data::symbol& sym) { return !sym.isLocal; })) {
 		output << "PUSH" << std::endl;
 		int currentOffset = 0;
 
 		for (auto& symbol : symbols()) {
+			if (symbol.isLocal)
+				continue;
+
 			output << "ORG (CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << "); "
 				   << symbol.name << ":" << std::endl;
 			currentOffset = symbol.offset;
 		}
 
-		output << "POP" << std::endl << std::endl;
+		output << "POP" << std::endl;
 	}
 
-	events.write_to_stream(output);
+	if (std::any_of(symbols().begin(), symbols().end(), [] (const section_data::symbol& sym) { return sym.isLocal; })) {
+		output << "{" << std::endl;
+		output << "PUSH" << std::endl;
+
+		int currentOffset = 0;
+
+		for (auto& symbol : symbols()) {
+			if (!symbol.isLocal)
+				continue;
+
+			output << "ORG (CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << "); "
+				   << symbol.name << ":" << std::endl;
+			currentOffset = symbol.offset;
+		}
+
+		output << "POP" << std::endl;
+
+		events.write_to_stream(output);
+
+		output << "}" << std::endl;
+	} else {
+		events.write_to_stream(output);
+	}
 }
 
 } // namespace lyn

@@ -9,6 +9,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 set(SOURCE_LIST
     main.cpp
 
+    core/util.h
+    core/util.cpp
+
     core/binary_file.h
     core/binary_file.cpp
 

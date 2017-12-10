@@ -1,28 +1,11 @@
 #include "section_data.h"
 
 #include "../ea/event_section.h"
+#include "util.h"
 
 #include <algorithm>
 
 namespace lyn {
-
-std::string::value_type toHexDigit(std::uint32_t value) {
-	value = (value & 0xF);
-
-	if (value < 10)
-		return '0' + value;
-	return 'A' + (value - 10);
-}
-
-std::string toHexDigits(std::uint32_t value, int digits) {
-	std::string result;
-	result.resize(digits);
-
-	for (int i=0; i<digits; ++i)
-		result[digits-i-1] = toHexDigit(value >> (4*i));
-
-	return result;
-}
 
 event_section section_data::make_events() const {
 	event_section result;
@@ -41,7 +24,7 @@ event_section section_data::make_events() const {
 		case mapping::Data:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_BYTE,
-				std::string("$").append(toHexDigits(byte_at(pos), 2))
+				std::string("$").append(stan::to_hex_digits(byte_at(pos), 2))
 			));
 			pos++;
 			break;
@@ -49,7 +32,7 @@ event_section section_data::make_events() const {
 		case mapping::Thumb:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_SHORT,
-				std::string("$").append(toHexDigits(at<std::uint16_t>(pos), 4))
+				std::string("$").append(stan::to_hex_digits(at<std::uint16_t>(pos), 4))
 			));
 			pos += 2;
 			break;
@@ -57,7 +40,7 @@ event_section section_data::make_events() const {
 		case mapping::ARM:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_WORD,
-				std::string("$").append(toHexDigits(at<std::uint32_t>(pos), 8))
+				std::string("$").append(stan::to_hex_digits(at<std::uint32_t>(pos), 8))
 			));
 			pos += 4;
 			break;
@@ -132,19 +115,6 @@ void section_data::combine_with(section_data&& other) {
 	}
 
 	binary_file::combine_with(other);
-}
-
-void section_data::remove_temp_symbols() {
-	symbols().erase(
-		std::remove_if(
-			symbols().begin(),
-			symbols().end(),
-			[] (const section_data::symbol& symbol) -> bool {
-				return symbol.isLocal;
-			}
-		),
-		symbols().end()
-	);
 }
 
 } // namespace lyn
