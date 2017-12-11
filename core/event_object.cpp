@@ -24,6 +24,16 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 		return result;
 	};
 
+	auto getGlobalSymbolName = [this] (const char* name) -> std::string {
+		std::string result(name);
+		int find = 0;
+
+		while ((find = result.find('.')) != std::string::npos)
+			result[find] = '_';
+
+		return result;
+	};
+
 	// Initializing written Sections from relevant elf sections
 
 	for (int i=0; i<newSections.size(); ++i) {
@@ -83,6 +93,8 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 				if (sym.bind() == elf::STB_LOCAL)
 					symbolName = getLocalSymbolName(sectionIndex, i);
+				else
+					symbolName = getGlobalSymbolName(symbolName.c_str());
 
 				sectionData.symbols().push_back({ symbolName, sym.st_value, (sym.bind() == elf::STB_LOCAL) });
 			}
@@ -101,6 +113,8 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 				if (sym.bind() == elf::STB_LOCAL)
 					name = getLocalSymbolName(elfSection.sh_link, rel.symId());
+				else
+					name = getGlobalSymbolName(name.c_str());
 
 				sectionData.relocations().push_back({ std::string(name), 0, rel.type(), rel.r_offset });
 			}
@@ -119,6 +133,8 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 				if (sym.bind() == elf::STB_LOCAL)
 					name = getLocalSymbolName(elfSection.sh_link, rela.symId());
+				else
+					name = getGlobalSymbolName(name.c_str());
 
 				sectionData.relocations().push_back({ std::string(name), rela.r_addend, rela.type(), rela.r_offset });
 			}
