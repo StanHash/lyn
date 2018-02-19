@@ -1,10 +1,8 @@
 project(lyn)
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
 set(SOURCE_LIST
     main.cpp
@@ -35,5 +33,7 @@ set(SOURCE_LIST
     core/arm_relocator.h
     core/arm_relocator.cpp
 )
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 
 add_executable(${PROJECT_NAME} ${SOURCE_LIST})

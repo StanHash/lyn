@@ -47,7 +47,7 @@ private:
 	std::vector<byte_t> mData;
 };
 
-template<typename T, int byte_count = sizeof(T)>
+template<typename T, int byte_count>
 T binary_file::read(int& pos) const {
 	T result = 0;
 
@@ -57,7 +57,7 @@ T binary_file::read(int& pos) const {
 	return result;
 }
 
-template<typename T, int byte_count = sizeof(T)>
+template<typename T, int byte_count>
 void binary_file::write(int pos, T value) {
 	for (int i=0; i<byte_count; ++i)
 		write_byte(pos + i, (value >> (i*8)) & 0xFF);

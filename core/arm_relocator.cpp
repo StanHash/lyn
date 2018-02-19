@@ -6,10 +6,10 @@
 namespace lyn {
 
 struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
-	event_code make_event_code(const section_data&, unsigned int, const std::string &sym, int addend) const {
+	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_POIN,
-			arm_relocator::abs_reloc_string(sym, addend)
+			arm_relocator::abs_reloc_string(sym, data.at<std::uint32_t>(offset) + addend)
 		);
 	}
 
@@ -19,10 +19,10 @@ struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
 };
 
 struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
-	event_code make_event_code(const section_data&, unsigned int, const std::string &sym, int addend) const {
+	event_code make_event_code(const section_data& data, unsigned int offset, const std::string &sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
-			arm_relocator::rel_reloc_string(sym, addend)
+			arm_relocator::rel_reloc_string(sym, data.at<std::uint32_t>(offset) + addend)
 		);
 	}
 
@@ -32,10 +32,10 @@ struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
 };
 
 struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
-	event_code make_event_code(const section_data&, unsigned int, const std::string& sym, int addend) const {
+	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_SHORT,
-			arm_relocator::abs_reloc_string(sym, addend)
+			arm_relocator::abs_reloc_string(sym, data.at<std::uint16_t>(offset) + addend)
 		);
 	}
 
@@ -45,10 +45,10 @@ struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
 };
 
 struct arm_data_abs8_reloc : public arm_relocator::relocatelet {
-	event_code make_event_code(const section_data&, unsigned int, const std::string& sym, int addend) const {
+	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_BYTE,
-			arm_relocator::abs_reloc_string(sym, addend)
+			arm_relocator::abs_reloc_string(sym, data.byte_at(offset) + addend)
 		);
 	}
 
