@@ -14,7 +14,7 @@ struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint32_t>(offset, (value + addend));
+		data.write<std::uint32_t>(offset, (data.at<std::uint32_t>(offset) + value + addend));
 	}
 };
 
@@ -27,7 +27,7 @@ struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint32_t>(offset, (value + addend - offset));
+		data.write<std::uint32_t>(offset, (data.at<std::uint32_t>(offset) + value + addend - offset));
 	}
 };
 
@@ -40,7 +40,7 @@ struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint16_t>(offset, (value + addend));
+		data.write<std::uint16_t>(offset, (data.at<std::uint16_t>(offset) + value + addend));
 	}
 };
 
@@ -53,7 +53,7 @@ struct arm_data_abs8_reloc : public arm_relocator::relocatelet {
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write_byte(offset, (value + addend));
+		data.write_byte(offset, (data.byte_at(offset) + value + addend));
 	}
 };
 
