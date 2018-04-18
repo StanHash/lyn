@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.1)
 
 option(USE_STATIC_LIBRARIES "When on, passes -static to the compiler" ON)
 
+include(config.cmake)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
