@@ -33,11 +33,6 @@ set(LYN_SOURCE_LIST
 	core/binary_file.h
 	core/binary_file.cpp
 
-	elf/raw_elf.h
-
-	elf/elf_file.h
-	elf/elf_file.cpp
-
 	ea/event_code.h
 	ea/event_code.cpp
 

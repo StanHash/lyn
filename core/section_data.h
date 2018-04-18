@@ -3,8 +3,7 @@
 
 #include "binary_file.h"
 
-#include "../elf/elf_file.h"
-#include "../ea/event_section.h"
+#include "ea/event_section.h"
 
 namespace lyn {
 
