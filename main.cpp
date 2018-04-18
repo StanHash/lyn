@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
 				std::cout << "PUSH" << std::endl;
 				std::cout << "ORG $" << std::hex << (hook.originalOffset & (~1)) << std::endl;
 
-				temp.combine_with(lyn::arm_relocator::make_thumb_veneer(hook.name, 0));
+				temp.add_section(lyn::arm_relocator::make_thumb_veneer(hook.name, 0));
 				temp.write_events(std::cout);
 
 				std::cout << "POP" << std::endl;

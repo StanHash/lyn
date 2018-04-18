@@ -6,7 +6,7 @@
 
 namespace lyn {
 
-class event_object : public section_data {
+class event_object {
 public:
 	struct hook {
 		unsigned int originalOffset;
@@ -27,11 +27,16 @@ public:
 
 	std::vector<hook> get_hooks() const;
 
+	void add_section(section_data&& section) {
+		mSections.push_back(std::move(section));
+	}
+
 	void write_events(std::ostream& output) const;
 
 private:
 	arm_relocator mRelocator;
 
+	std::vector<section_data> mSections;
 	std::vector<section_data::symbol> mAbsoluteSymbols;
 };
 
