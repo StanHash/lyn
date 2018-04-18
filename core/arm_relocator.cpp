@@ -1,5 +1,5 @@
 #include "arm_relocator.h"
-#include "util.h"
+#include "util/hex_write.h"
 
 #include <algorithm>
 
@@ -191,7 +191,7 @@ std::string arm_relocator::b24_arm_string(std::uint32_t base, const std::string&
 	result.append("(((");
 	result.append(valueString);
 	result.append(">>2)&$FFFFFF)|$");
-	result.append(stan::to_hex_digits(base, 8));
+	util::append_hex(result, base);
 	result.append(")");
 
 	return result;

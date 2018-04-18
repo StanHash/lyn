@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include "../ea/event_section.h"
-#include "util.h"
+#include "util/hex_write.h"
 
 namespace lyn {
 
@@ -14,12 +14,15 @@ void event_object::append_from_elf(const elf_file& elfFile) {
 
 	auto getLocalSymbolName = [this] (int section, int index) -> std::string {
 		std::string result;
-		result.reserve(2 + 8 + 4 + 4);
+		result.reserve(4 + 8 + 4 + 4);
 
 		result.append("_L");
-		result.append(stan::to_hex_digits(size(),  8));
-		result.append(stan::to_hex_digits(section, 4));
-		result.append(stan::to_hex_digits(index,   4));
+
+		util::append_hex(result, size());
+		result.append("_");
+		util::append_hex(result, section);
+		result.append("_");
+		util::append_hex(result, index);
 
 		return result;
 	};

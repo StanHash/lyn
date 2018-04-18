@@ -9,8 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(SOURCE_LIST
     main.cpp
 
-    core/util.h
-    core/util.cpp
+	util/hex_write.h
 
     core/binary_file.h
     core/binary_file.cpp

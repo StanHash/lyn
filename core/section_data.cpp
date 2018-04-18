@@ -1,7 +1,7 @@
 #include "section_data.h"
 
 #include "../ea/event_section.h"
-#include "util.h"
+#include "util/hex_write.h"
 
 #include <algorithm>
 
@@ -24,7 +24,7 @@ event_section section_data::make_events() const {
 		case mapping::Data:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_BYTE,
-				std::string("$").append(stan::to_hex_digits(byte_at(pos), 2))
+				util::make_hex_string("$", byte_at(pos))
 			));
 			pos++;
 			break;
@@ -32,7 +32,7 @@ event_section section_data::make_events() const {
 		case mapping::Thumb:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_SHORT,
-				std::string("$").append(stan::to_hex_digits(at<std::uint16_t>(pos), 4))
+				util::make_hex_string("$", at<std::uint16_t>(pos))
 			));
 			pos += 2;
 			break;
@@ -40,7 +40,7 @@ event_section section_data::make_events() const {
 		case mapping::ARM:
 			result.set_code(pos, lyn::event_code(
 				lyn::event_code::CODE_WORD,
-				std::string("$").append(stan::to_hex_digits(at<std::uint32_t>(pos), 8))
+				util::make_hex_string("$", at<std::uint32_t>(pos))
 			));
 			pos += 4;
 			break;
