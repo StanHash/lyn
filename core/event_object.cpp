@@ -1,12 +1,265 @@
 #include "event_object.h"
 
+#include <fstream>
+
 #include <iomanip>
 #include <algorithm>
 
-#include "../ea/event_section.h"
+#include "elfcpp/elfcpp_file.h"
+
+#include "ea/event_section.h"
 #include "util/hex_write.h"
 
+namespace elfcpp {
+
+// for some reason this is required in order to make the whole thing work
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::ehdr_size;
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::phdr_size;
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::shdr_size;
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::sym_size;
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::rel_size;
+
+template<int Size, bool BigEndian, typename File>
+const int Elf_file<Size, BigEndian, File>::rela_size;
+
+} // namespace elfcpp
+
 namespace lyn {
+
+void event_object::append_from_elf(const char* fileName) {
+	binary_file file; {
+		std::ifstream fileStream;
+
+		fileStream.open(fileName, std::ios::in | std::ios::binary);
+
+		if (!fileStream.is_open())
+			throw std::runtime_error(std::string("Couldn't open file for read: ").append(fileName)); // TODO: better error
+
+		file.load_from_stream(fileStream);
+		fileStream.close();
+	}
+
+	elfcpp::Elf_file<32, false, lyn::binary_file> elfFile(&file);
+
+	auto readString = [&file] (elfcpp::Shdr<32, false> section, unsigned offset) -> std::string {
+		return file.cstr_at(section.get_sh_offset() + offset);
+	};
+
+	std::vector<section_data> newSections(elfFile.shnum());
+	std::vector<bool> outMap(elfFile.shnum(), false);
+
+	auto getLocalSymbolName = [this] (int section, int index) -> std::string {
+		std::string result;
+		result.reserve(4 + 8 + 4 + 4);
+
+		result.append("_L");
+
+		util::append_hex(result, size());
+		result.append("_");
+		util::append_hex(result, section);
+		result.append("_");
+		util::append_hex(result, index);
+
+		return result;
+	};
+
+	auto getGlobalSymbolName = [this] (const char* name) -> std::string {
+		std::string result(name);
+		int find = 0;
+
+		while ((find = result.find('.')) != std::string::npos)
+			result[find] = '_';
+
+		return result;
+	};
+
+	for (unsigned i = 0; i < elfFile.shnum(); ++i) {
+		auto flags = elfFile.section_flags(i);
+
+		if ((flags & elfcpp::SHF_ALLOC) && !(flags & elfcpp::SHF_WRITE)) {
+			auto& section = newSections.at(i);
+			auto  loc     = elfFile.section_contents(i);
+
+			section.set_name(elfFile.section_name(i));
+			section.load_from_other(file, loc.file_offset, loc.data_size);
+
+			outMap[i] = true;
+		}
+	}
+
+	for (unsigned si = 0; si < elfFile.shnum(); ++si) {
+		elfcpp::Shdr<32, false> header(&file, elfFile.section_header(si));
+
+		switch (header.get_sh_type()) {
+
+		case elfcpp::SHT_SYMTAB: {
+			const unsigned count = header.get_sh_size() / header.get_sh_entsize();
+			const elfcpp::Shdr<32, false> nameShdr(&file, elfFile.section_header(header.get_sh_link()));
+
+			for (unsigned i = 0; i < count; ++i) {
+				elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+					header.get_sh_offset() + i * header.get_sh_entsize(),
+					header.get_sh_entsize()
+				));
+
+				switch (sym.get_st_shndx()) {
+
+				case elfcpp::SHN_ABS: {
+					if (sym.get_st_bind() != elfcpp::STB_GLOBAL)
+						break;
+
+					mAbsoluteSymbols.push_back(symbol {
+						readString(nameShdr, sym.get_st_name()),
+						sym.get_st_value(),
+						false
+					});
+
+					break;
+				} // case elfcpp::SHN_ABS
+
+				default: {
+					if (!outMap.at(sym.get_st_shndx()))
+						break;
+
+					auto& section = newSections.at(sym.get_st_shndx());
+
+					std::string name = readString(nameShdr, sym.get_st_name());
+
+					if (sym.get_st_type() == elfcpp::STT_NOTYPE && sym.get_st_bind() == elfcpp::STB_LOCAL) {
+						std::string subString = name.substr(0, 3);
+
+						if ((name == "$t") || (subString == "$t.")) {
+							section.set_mapping(sym.get_st_value(), mapping::Thumb);
+							break;
+						} else if ((name == "$a") || (subString == "$a.")) {
+							section.set_mapping(sym.get_st_value(), mapping::ARM);
+							break;
+						} else if ((name == "$d") || (subString == "$d.")) {
+							section.set_mapping(sym.get_st_value(), mapping::Data);
+							break;
+						}
+					}
+
+					if (sym.get_st_bind() == elfcpp::STB_LOCAL)
+						name = getLocalSymbolName(si, i);
+					else
+						name = getGlobalSymbolName(name.c_str());
+
+					section.symbols().push_back(symbol {
+						name,
+						sym.get_st_value(),
+						(sym.get_st_bind() == elfcpp::STB_LOCAL)
+					});
+
+					break;
+				} // default
+
+				} // switch (sym.get_st_shndx())
+			}
+
+			break;
+		} // case elfcpp::SHT_SYMTAB
+
+		case elfcpp::SHT_REL: {
+			if (!outMap.at(header.get_sh_info()))
+				break;
+
+			const unsigned count = header.get_sh_size() / header.get_sh_entsize();
+
+			const elfcpp::Shdr<32, false> symShdr(&file, elfFile.section_header(header.get_sh_link()));
+			const elfcpp::Shdr<32, false> symNameShdr(&file, elfFile.section_header(symShdr.get_sh_link()));
+
+			auto& section = newSections.at(header.get_sh_info());
+
+			for (unsigned i = 0; i < count; ++i) {
+				const elfcpp::Rel<32, false> rel(&file, binary_file::Location(
+					header.get_sh_offset() + i * header.get_sh_entsize(),
+					header.get_sh_entsize()
+				));
+
+				const elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+					symShdr.get_sh_offset() + elfcpp::elf_r_sym<32>(rel.get_r_info()) * symShdr.get_sh_entsize(),
+					symShdr.get_sh_entsize()
+				));
+
+				const std::string name = (sym.get_st_bind() == elfcpp::STB_LOCAL)
+					? getLocalSymbolName(header.get_sh_link(), elfcpp::elf_r_sym<32>(rel.get_r_info()))
+					: getGlobalSymbolName(readString(symNameShdr, sym.get_st_name()).c_str());
+
+				section.relocations().push_back(relocation {
+					name,
+					0,
+					elfcpp::elf_r_type<32>(rel.get_r_info()),
+					rel.get_r_offset()
+				});
+			}
+
+			break;
+		} // case elfcpp::SHT_REL
+
+		case elfcpp::SHT_RELA: {
+			if (!outMap.at(header.get_sh_info()))
+				break;
+
+			const unsigned count = header.get_sh_size() / header.get_sh_entsize();
+
+			const elfcpp::Shdr<32, false> symShdr(&file, elfFile.section_header(header.get_sh_link()));
+			const elfcpp::Shdr<32, false> symNameShdr(&file, elfFile.section_header(symShdr.get_sh_link()));
+
+			auto& section = newSections.at(header.get_sh_info());
+
+			for (unsigned i = 0; i < count; ++i) {
+				const elfcpp::Rela<32, false> rela(&file, binary_file::Location(
+					header.get_sh_offset() + i * header.get_sh_entsize(),
+					header.get_sh_entsize()
+				));
+
+				const elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+					symShdr.get_sh_offset() + elfcpp::elf_r_sym<32>(rela.get_r_info()) * symShdr.get_sh_entsize(),
+					symShdr.get_sh_entsize()
+				));
+
+				const std::string name = (sym.get_st_bind() == elfcpp::STB_LOCAL)
+					? getLocalSymbolName(header.get_sh_link(), elfcpp::elf_r_sym<32>(rela.get_r_info()))
+					: getGlobalSymbolName(readString(symNameShdr, sym.get_st_name()).c_str());
+
+				section.relocations().push_back(relocation {
+					name,
+					rela.get_r_addend(),
+					elfcpp::elf_r_type<32>(rela.get_r_info()),
+					rela.get_r_offset()
+				});
+			}
+
+			break;
+		} // case elfcpp::SHT_RELA
+
+		} // switch (header.get_sh_type())
+	}
+
+	// Remove empty sections
+
+	newSections.erase(std::remove_if(newSections.begin(), newSections.end(), [] (const section_data& section) {
+		return (section.size()==0);
+	}), newSections.end());
+
+	// Create the ultimate lifeform
+
+	for (auto& section : newSections) {
+		combine_with(std::move(section));
+		ensure_aligned(4);
+	}
+}
 
 void event_object::append_from_elf(const elf_file& elfFile) {
 	std::vector<section_data> newSections(elfFile.sections().size());

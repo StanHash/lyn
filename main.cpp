@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
 		lyn::event_object object;
 
 		for (auto& elf : elves)
-			object.append_from_elf(make_elf(elf));
+			object.append_from_elf(elf.c_str());
 
 		if (options.doLink)
 			object.try_relocate_relatives();

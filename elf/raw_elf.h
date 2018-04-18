@@ -144,7 +144,7 @@ struct symbol {
 	std::uint8_t  st_other;
 	std::uint16_t st_shndx;
 
-	constexpr int type() const { return st_info & 0xF; }
+	constexpr unsigned type() const { return st_info & 0xF; }
 	constexpr int bind() const { return st_info >> 4; }
 };
 
@@ -152,7 +152,7 @@ struct rel {
 	std::uint32_t r_offset;
 	std::uint32_t r_info;
 
-	constexpr int type() const  { return r_info & 0xFF; }
+	constexpr unsigned type() const  { return r_info & 0xFF; }
 	constexpr int symId() const { return r_info >> 8; }
 };
 

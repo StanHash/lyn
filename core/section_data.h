@@ -31,8 +31,8 @@ public:
 		std::string symbolName;
 		int addend;
 
-		int type;
-		unsigned int offset;
+		unsigned type;
+		unsigned offset;
 	};
 
 	enum output_type {

@@ -16,6 +16,7 @@ public:
 	};
 
 public:
+	void append_from_elf(const char* fName);
 	void append_from_elf(const lyn::elf_file& elfFile);
 
 	void try_transform_relatives();

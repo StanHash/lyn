@@ -1,5 +1,5 @@
 # Generating config.h
-# (Required for elfcpp)
+# (Required by elfcpp)
 
 include(CheckIncludeFiles)
 include(TestBigEndian)

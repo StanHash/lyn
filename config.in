@@ -10,9 +10,7 @@
 #	include <clocale>
 #else
 #	include <clocale>
-#	define gettext(aMsgId) (aMsgId)
+#	define _(aString) (aString)
 #endif
-
-#define _(aString) gettext(aString)
 
 #endif // LYN_SYS_CONFIG
