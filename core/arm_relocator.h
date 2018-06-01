@@ -38,6 +38,7 @@ public:
 	static std::string b24_arm_string(uint32_t base, const std::string& valueString);
 
 	static std::string b_string(const std::string& valueString);
+	static std::string bcond_string(uint16_t base, const std::string& valueString);
 
 	static std::string bl_op1_string(const std::string& valueString);
 	static std::string bl_op2_string(const std::string& valueString);

@@ -89,6 +89,34 @@ struct arm_thumb_b_reloc : public arm_relocator::relocatelet {
 	}
 };
 
+struct arm_thumb_bcond_reloc : public arm_relocator::relocatelet {
+	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
+		std::string value  = arm_relocator::pcrel_reloc_string(sym, addend);
+
+		return lyn::event_code(lyn::event_code::CODE_SHORT, {
+			arm_relocator::bcond_string((data.at<std::uint16_t>(offset) & 0xFF00), value)
+		}, lyn::event_code::ALLOW_NONE);
+	}
+
+	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
+		std::uint32_t relocatedValue = (value + addend - offset - 4);
+
+		data.write<std::uint16_t>(offset, (((relocatedValue>>1) & 0xFF) | (data.at<std::uint16_t>(offset) & 0xFF00)));
+	}
+
+	bool is_absolute() const {
+		return false;
+	}
+
+	bool can_make_trampoline() const {
+		return true;
+	}
+
+	section_data make_trampoline(const std::string& symbol, int addend) const {
+		return arm_relocator::make_thumb_veneer(symbol, addend);
+	}
+};
+
 struct arm_thumb_bl_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data&, unsigned int, const std::string& sym, int addend) const {
 		std::string value = arm_relocator::pcrel_reloc_string(sym, addend);
@@ -152,14 +180,15 @@ struct arm_arm_bl_reloc : public arm_arm_b_reloc {
 };
 
 arm_relocator::arm_relocator() {
-	mRelocatelets[0x02].reset(new arm_data_abs32_reloc); // R_ARM_ABS32
-	mRelocatelets[0x03].reset(new arm_data_rel32_reloc); // R_ARM_REL32
-	mRelocatelets[0x05].reset(new arm_data_abs16_reloc); // R_ARM_ABS16
-	mRelocatelets[0x06].reset(new arm_data_abs8_reloc);  // R_ARM_ABS8
-	mRelocatelets[0x0A].reset(new arm_thumb_bl_reloc);   // R_ARM_THM_CALL
-	mRelocatelets[0x1C].reset(new arm_arm_bl_reloc);     // R_ARM_CALL
-	mRelocatelets[0x1D].reset(new arm_arm_b_reloc);      // R_ARM_JUMP24
-	mRelocatelets[0x66].reset(new arm_thumb_b_reloc);    // R_ARM_THM_JUMP11
+	mRelocatelets[0x02].reset(new arm_data_abs32_reloc);  // R_ARM_ABS32
+	mRelocatelets[0x03].reset(new arm_data_rel32_reloc);  // R_ARM_REL32
+	mRelocatelets[0x05].reset(new arm_data_abs16_reloc);  // R_ARM_ABS16
+	mRelocatelets[0x06].reset(new arm_data_abs8_reloc);   // R_ARM_ABS8
+	mRelocatelets[0x0A].reset(new arm_thumb_bl_reloc);    // R_ARM_THM_CALL
+	mRelocatelets[0x1C].reset(new arm_arm_bl_reloc);      // R_ARM_CALL
+	mRelocatelets[0x1D].reset(new arm_arm_b_reloc);       // R_ARM_JUMP24
+	mRelocatelets[0x66].reset(new arm_thumb_b_reloc);     // R_ARM_THM_JUMP11
+	mRelocatelets[0x67].reset(new arm_thumb_bcond_reloc); // R_ARM_THM_JUMP8
 }
 
 const arm_relocator::relocatelet* arm_relocator::get_relocatelet(int relocationIndex) const {
@@ -237,7 +266,18 @@ std::string arm_relocator::b_string(const std::string& valueString) {
 	result.append(">>1)&$7FF)|$E000");
 
 	return result;
+}
 
+std::string arm_relocator::bcond_string(std::uint16_t base, const std::string& valueString) {
+	std::string result;
+	result.reserve(18 + valueString.size());
+
+	result.append("((");
+	result.append(valueString);
+	result.append(">>1)&$FF)|$");
+	util::append_hex(result, base);
+
+	return result;
 }
 
 std::string arm_relocator::bl_op1_string(const std::string& valueString) {
