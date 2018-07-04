@@ -28,9 +28,13 @@ public:
 	event_code(code_type_enum type, const std::initializer_list<std::string>& arguments, combine_policy policy = ALLOW_ALL);
 
 	std::string get_code_string() const;
+	std::string get_code_string_misaligned() const;
+
+	void write_to_stream_misaligned(std::ostream& output) const;
 	void write_to_stream(std::ostream& output) const;
 
 	const std::string& code_name() const;
+	const std::string& code_name_misaligned() const;
 
 	unsigned int code_size() const;
 	unsigned int code_align() const;
@@ -46,6 +50,7 @@ private:
 private:
 	struct event_code_type {
 		std::string name;
+		std::string nameMisaligned;
 
 		enum {
 			Raw,

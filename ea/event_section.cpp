@@ -8,33 +8,42 @@ event_section& event_section::operator = (const event_section& other) {
 	mCodeMap.resize(other.mCodeMap.size());
 	mCodes.clear();
 
-	int currentOffset = 0;
+	unsigned currentOffset = 0;
 
 	while (currentOffset < mCodeMap.size()) {
 		int size = other.mCodes[other.mCodeMap[currentOffset]].code_size();
 		set_code(currentOffset, event_code(other.mCodes[other.mCodeMap[currentOffset]]));
 		currentOffset += size;
 	}
+
+	return *this;
 }
 
 event_section& event_section::operator = (event_section&& other) {
 	resize(other.mCodeMap.size());
 	mCodes.clear();
 
-	int currentOffset = 0;
+	unsigned currentOffset = 0;
 
 	while (currentOffset < mCodeMap.size()) {
 		int size = other.mCodes[other.mCodeMap[currentOffset]].code_size();
 		set_code(currentOffset, std::move(other.mCodes[other.mCodeMap[currentOffset]]));
 		currentOffset += size;
 	}
+
+	return *this;
 }
 
 void event_section::write_to_stream(std::ostream& output) const {
-	for (int pos = 0; pos < mCodeMap.size();) {
+	for (unsigned pos = 0; pos < mCodeMap.size();) {
 		const event_code& code = mCodes[mCodeMap[pos]];
 
-		output << code << std::endl; // TODO: add support for non-endl code separator (';' specifically)
+		if ((pos % code.code_align()) == 0)
+			code.write_to_stream(output);
+		else
+			code.write_to_stream_misaligned(output);
+
+		output << std::endl;
 		pos += code.code_size();
 	}
 }
@@ -46,8 +55,8 @@ void event_section::resize(unsigned int size) {
 void event_section::set_code(unsigned int offset, event_code&& code) {
 	int size = code.code_size();
 
-	if ((offset % code.code_align()) != 0)
-		throw std::runtime_error("EA ERROR: tried to add misaligned code!");
+//	if ((offset % code.code_align()) != 0)
+//		throw std::runtime_error("EA ERROR: tried to add misaligned code!");
 
 	if (offset + size > mCodeMap.size())
 		mCodeMap.resize(offset + size);
@@ -60,7 +69,7 @@ void event_section::set_code(unsigned int offset, event_code&& code) {
 }
 
 void event_section::compress_codes() {
-	int currentOffset = 0;
+	unsigned currentOffset = 0;
 
 	while (currentOffset < mCodeMap.size()) {
 		int index = mCodeMap[currentOffset];
@@ -74,7 +83,7 @@ void event_section::compress_codes() {
 		if (code.can_combine_with(nextCode)) {
 			code.combine_with(std::move(nextCode));
 
-			for (int i=0; i<code.code_size(); ++i)
+			for (unsigned i=0; i<code.code_size(); ++i)
 				mCodeMap[currentOffset + i] = index;
 		} else {
 			currentOffset += code.code_size();

@@ -5,12 +5,12 @@
 namespace lyn {
 
 std::vector<event_code::event_code_type> event_code::msCodeTypeLibrary = {
-//  { name,    type,                               size, align },
-	{ "BYTE",  event_code::event_code_type::Raw,   1,    1     }, // CODE_BYTE  = 0
-	{ "SHORT", event_code::event_code_type::Raw,   2,    2     }, // CODE_SHORT = 1
-	{ "WORD",  event_code::event_code_type::Raw,   4,    4     }, // CODE_WORD  = 2
-	{ "POIN",  event_code::event_code_type::Raw,   4,    4     }, // CODE_POIN  = 3
-	{ "BL",    event_code::event_code_type::Macro, 4,    2     }, // MACRO_BL   = 4
+//  { name,    name,     type,                               size, align },
+	{ "BYTE",  "BYTE",   event_code::event_code_type::Raw,   1,    1     }, // CODE_BYTE  = 0
+	{ "SHORT", "SHORT2", event_code::event_code_type::Raw,   2,    2     }, // CODE_SHORT = 1
+	{ "WORD",  "WORD2",  event_code::event_code_type::Raw,   4,    4     }, // CODE_WORD  = 2
+	{ "POIN",  "POIN2",  event_code::event_code_type::Raw,   4,    4     }, // CODE_POIN  = 3
+	{ "BL",    "BL",     event_code::event_code_type::Macro, 4,    2     }, // MACRO_BL   = 4
 };
 
 event_code::event_code(code_type_enum type, const std::string& argument, combine_policy policy)
@@ -20,7 +20,22 @@ event_code::event_code(code_type_enum type, const std::initializer_list<std::str
 	: mCombinePolicy(policy), mCodeType(type), mArguments(arguments) {}
 
 std::string event_code::get_code_string() const {
-	int reserve = code_name().size() + 2;
+	unsigned reserve = code_name().size() + 2;
+
+	for (auto& arg : mArguments)
+		reserve += arg.size() + 2;
+
+	std::string result;
+	result.reserve(reserve);
+
+	std::ostringstream sstream(result);
+	write_to_stream(sstream);
+
+	return result;
+}
+
+std::string event_code::get_code_string_misaligned() const {
+	unsigned reserve = code_name_misaligned().size() + 2;
 
 	for (auto& arg : mArguments)
 		reserve += arg.size() + 2;
@@ -57,8 +72,35 @@ void event_code::write_to_stream(std::ostream& output) const {
 	}
 }
 
+void event_code::write_to_stream_misaligned(std::ostream& output) const {
+	auto& codeType = msCodeTypeLibrary[mCodeType];
+
+	output << codeType.nameMisaligned;
+
+	if (codeType.type == event_code_type::Raw) {
+		for (auto& arg : mArguments)
+			output << " " << arg;
+	} else { // codeType.type == event_code_type::Macro
+		auto it = mArguments.begin();
+
+		if (it == mArguments.end())
+			return;
+
+		output << "(" << *it;
+
+		while ((++it) != mArguments.end())
+			output << ", " << *it;
+
+		output << ")";
+	}
+}
+
 const std::string& event_code::code_name() const {
 	return msCodeTypeLibrary[mCodeType].name;
+}
+
+const std::string& event_code::code_name_misaligned() const {
+	return msCodeTypeLibrary[mCodeType].nameMisaligned;
 }
 
 unsigned int event_code::code_size() const {
