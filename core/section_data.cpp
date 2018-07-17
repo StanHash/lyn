@@ -11,14 +11,44 @@ event_section section_data::make_events() const {
 	event_section result;
 	result.resize(size());
 
+	/*
 	auto mappingIt = mMappings.begin();
 	int currentMappingType = mapping::Data;
+	// */
 
-	int pos = 0;
+	unsigned pos = 0;
 
 	while (pos < size()) {
+		unsigned left = size() - pos;
+
+		if (left >= 4) {
+			result.set_code(pos, lyn::event_code(
+				lyn::event_code::CODE_WORD,
+				util::make_hex_string("$", at<std::uint32_t>(pos))
+			));
+
+			pos += 4;
+		} else if (left >= 2) {
+			result.set_code(pos, lyn::event_code(
+				lyn::event_code::CODE_SHORT,
+				util::make_hex_string("$", at<std::uint16_t>(pos))
+			));
+
+			pos += 2;
+		} else {
+			result.set_code(pos, lyn::event_code(
+				lyn::event_code::CODE_BYTE,
+				util::make_hex_string("$", byte_at(pos))
+			));
+
+			pos++;
+		}
+
+		/*
+
 		if (mappingIt != mMappings.end() && (mappingIt->offset <= pos))
 			currentMappingType = (mappingIt++)->type;
+
 
 		switch (currentMappingType) {
 		case mapping::Data:
@@ -45,6 +75,8 @@ event_section section_data::make_events() const {
 			pos += 4;
 			break;
 		}
+
+		// */
 	}
 
 	return result;
