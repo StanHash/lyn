@@ -1,7 +1,11 @@
 #include "arm_relocator.h"
-#include "util/hex_write.h"
 
 #include <algorithm>
+
+#include "util/hex_write.h"
+
+#include "elfcpp/elfcpp.h"
+#include "elfcpp/arm.h"
 
 namespace lyn {
 
@@ -180,15 +184,15 @@ struct arm_arm_bl_reloc : public arm_arm_b_reloc {
 };
 
 arm_relocator::arm_relocator() {
-	mRelocatelets[0x02].reset(new arm_data_abs32_reloc);  // R_ARM_ABS32
-	mRelocatelets[0x03].reset(new arm_data_rel32_reloc);  // R_ARM_REL32
-	mRelocatelets[0x05].reset(new arm_data_abs16_reloc);  // R_ARM_ABS16
-	mRelocatelets[0x06].reset(new arm_data_abs8_reloc);   // R_ARM_ABS8
-	mRelocatelets[0x0A].reset(new arm_thumb_bl_reloc);    // R_ARM_THM_CALL
-	mRelocatelets[0x1C].reset(new arm_arm_bl_reloc);      // R_ARM_CALL
-	mRelocatelets[0x1D].reset(new arm_arm_b_reloc);       // R_ARM_JUMP24
-	mRelocatelets[0x66].reset(new arm_thumb_b_reloc);     // R_ARM_THM_JUMP11
-	mRelocatelets[0x67].reset(new arm_thumb_bcond_reloc); // R_ARM_THM_JUMP8
+	mRelocatelets[elfcpp::R_ARM_ABS32].reset(new arm_data_abs32_reloc);  // R_ARM_ABS32
+	mRelocatelets[elfcpp::R_ARM_REL32].reset(new arm_data_rel32_reloc);  // R_ARM_REL32
+	mRelocatelets[elfcpp::R_ARM_ABS16].reset(new arm_data_abs16_reloc);  // R_ARM_ABS16
+	mRelocatelets[elfcpp::R_ARM_ABS8].reset(new arm_data_abs8_reloc);   // R_ARM_ABS8
+	mRelocatelets[elfcpp::R_ARM_THM_CALL].reset(new arm_thumb_bl_reloc);    // R_ARM_THM_CALL
+	mRelocatelets[elfcpp::R_ARM_CALL].reset(new arm_arm_bl_reloc);      // R_ARM_CALL
+	mRelocatelets[elfcpp::R_ARM_JUMP24].reset(new arm_arm_b_reloc);       // R_ARM_JUMP24
+	mRelocatelets[elfcpp::R_ARM_THM_JUMP11].reset(new arm_thumb_b_reloc);     // R_ARM_THM_JUMP11
+	mRelocatelets[elfcpp::R_ARM_THM_JUMP8].reset(new arm_thumb_bcond_reloc); // R_ARM_THM_JUMP8
 }
 
 const arm_relocator::relocatelet* arm_relocator::get_relocatelet(int relocationIndex) const {
