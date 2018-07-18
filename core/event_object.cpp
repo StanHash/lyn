@@ -71,9 +71,9 @@ void event_object::append_from_elf(const char* fileName) {
 		return result;
 	};
 
-	auto getGlobalSymbolName = [this] (const char* name) -> std::string {
+	auto getGlobalSymbolName = [] (const char* name) -> std::string {
 		std::string result(name);
-		int find = 0;
+		std::size_t find = 0;
 
 		while ((find = result.find('.')) != std::string::npos)
 			result[find] = '_';
@@ -446,13 +446,14 @@ void event_object::write_events(std::ostream& output) const {
 	unsigned offset = 0;
 
 	for (auto& section : mSections) {
-		event_section events = section.make_events();
+		event_section events; // = section.make_events();
+		events.resize(section.size());
 
 		output << "ALIGN 4" << std::endl;
 
 		for (auto& relocation : section.relocations()) {
 			if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
-				events.set_code(relocation.offset, relocatelet->make_event_code(
+				events.map_code(relocation.offset, relocatelet->make_event_code(
 					section,
 					relocation.offset,
 					relocation.symbolName,
@@ -512,11 +513,11 @@ void event_object::write_events(std::ostream& output) const {
 
 			output << "POP" << std::endl;
 
-			events.write_to_stream(output);
+			events.write_to_stream(output, section);
 
 			output << "}" << std::endl;
 		} else {
-			events.write_to_stream(output);
+			events.write_to_stream(output, section);
 		}
 
 		offset += section.size();

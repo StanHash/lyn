@@ -2,6 +2,7 @@
 #define EVENT_SECTION_H
 
 #include "event_code.h"
+#include "core/binary_file.h"
 
 #include <iostream>
 
@@ -17,11 +18,12 @@ public:
 	event_section& operator = (const event_section& other);
 	event_section& operator = (event_section&& other);
 
-	void write_to_stream(std::ostream& output) const;
+	void write_to_stream(std::ostream& output, const binary_file& base) const;
 
-	void resize(unsigned int size);
+	void resize(unsigned size);
 
-	void set_code(unsigned int offset, event_code&& code);
+	void map_code(unsigned offset, const event_code& code);
+	void map_code(unsigned offset, event_code&& code);
 
 	void compress_codes();
 	void optimize();

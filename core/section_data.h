@@ -3,8 +3,6 @@
 
 #include "binary_file.h"
 
-#include "ea/event_section.h"
-
 namespace lyn {
 
 class section_data : public binary_file {
@@ -48,8 +46,6 @@ public:
 
 	const std::vector<symbol>& symbols() const { return mSymbols; }
 	std::vector<symbol>& symbols() { return mSymbols; }
-
-	event_section make_events() const;
 
 	int mapping_type_at(unsigned int offset) const;
 	void set_mapping(unsigned int offset, mapping::type_enum type);
