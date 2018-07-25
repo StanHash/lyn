@@ -7,8 +7,7 @@
 
 namespace lyn {
 
-class section_data : public data_chunk {
-public:
+struct section_data : public data_chunk {
 	struct mapping {
 		enum type_enum {
 			Data,
@@ -17,7 +16,7 @@ public:
 		};
 
 		type_enum type;
-		unsigned int offset;
+		unsigned offset;
 	};
 
 	struct symbol {
@@ -34,11 +33,6 @@ public:
 		unsigned offset;
 	};
 
-	enum output_type {
-		NoOut,
-		OutROM,
-	};
-
 public:
 	void set_name(const std::string& name) { mName = name; }
 	const std::string& name() const { return mName; }
@@ -51,9 +45,6 @@ public:
 
 	int mapping_type_at(unsigned int offset) const;
 	void set_mapping(unsigned int offset, mapping::type_enum type);
-
-	void combine_with(const section_data& other);
-	void combine_with(section_data&& other);
 
 private:
 	std::string mName;
