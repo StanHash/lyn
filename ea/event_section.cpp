@@ -61,7 +61,7 @@ void event_section::write_to_stream(std::ostream& output, const binary_file& bas
 				output << "WORD";
 
 				while (distance >= 4) {
-					output << util::make_hex_string(" $", base.at<uint32_t>(pos));
+					output << util::make_hex_string(" $", base.read<uint32_t>(pos));
 
 					pos      += 4;
 					distance -= 4;
@@ -70,14 +70,14 @@ void event_section::write_to_stream(std::ostream& output, const binary_file& bas
 				output << std::endl;
 			} else if ((distance >= 2) && ((pos % 2) == 0)) {
 				output << "SHORT"
-					   << util::make_hex_string(" $", base.at<uint16_t>(pos))
+					   << util::make_hex_string(" $", base.read<uint16_t>(pos))
 					   << std::endl;
 
 				pos      += 2;
 				distance -= 2;
 			} else if (distance >= 1) {
 				output << "BYTE"
-					   << util::make_hex_string(" $", base.at<uint8_t>(pos))
+					   << util::make_hex_string(" $", base.read<uint8_t>(pos))
 					   << std::endl;
 
 				pos++;

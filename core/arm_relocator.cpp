@@ -13,13 +13,13 @@ struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_POIN,
-			arm_relocator::abs_reloc_string(sym, data.at<std::uint32_t>(offset) + addend),
+			arm_relocator::abs_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
 			lyn::event_code::ALLOW_NONE
 		);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint32_t>(offset, (data.at<std::uint32_t>(offset) + value + addend));
+		data.write<std::uint32_t>(offset, (data.read<std::uint32_t>(offset) + value + addend));
 	}
 };
 
@@ -27,13 +27,13 @@ struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string &sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
-			arm_relocator::rel_reloc_string(sym, data.at<std::uint32_t>(offset) + addend),
+			arm_relocator::rel_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
 			lyn::event_code::ALLOW_NONE
 		);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint32_t>(offset, (data.at<std::uint32_t>(offset) + value + addend - offset));
+		data.write<std::uint32_t>(offset, (data.read<std::uint32_t>(offset) + value + addend - offset));
 	}
 };
 
@@ -41,13 +41,13 @@ struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_SHORT,
-			arm_relocator::abs_reloc_string(sym, data.at<std::uint16_t>(offset) + addend),
+			arm_relocator::abs_reloc_string(sym, data.read<std::uint16_t>(offset) + addend),
 			lyn::event_code::ALLOW_NONE
 		);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write<std::uint16_t>(offset, (data.at<std::uint16_t>(offset) + value + addend));
+		data.write<std::uint16_t>(offset, (data.read<std::uint16_t>(offset) + value + addend));
 	}
 };
 
@@ -55,13 +55,13 @@ struct arm_data_abs8_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_BYTE,
-			arm_relocator::abs_reloc_string(sym, data.byte_at(offset) + addend),
+			arm_relocator::abs_reloc_string(sym, data.read_byte(offset) + addend),
 			lyn::event_code::ALLOW_NONE
 		);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
-		data.write_byte(offset, (data.byte_at(offset) + value + addend));
+		data.write_byte(offset, (data.read_byte(offset) + value + addend));
 	}
 };
 
@@ -98,14 +98,14 @@ struct arm_thumb_bcond_reloc : public arm_relocator::relocatelet {
 		std::string value  = arm_relocator::pcrel_reloc_string(sym, addend);
 
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
-			arm_relocator::bcond_string((data.at<std::uint16_t>(offset) & 0xFF00), value)
+			arm_relocator::bcond_string((data.read<std::uint16_t>(offset) & 0xFF00), value)
 		}, lyn::event_code::ALLOW_NONE);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
 		std::uint32_t relocatedValue = (value + addend - offset - 4);
 
-		data.write<std::uint16_t>(offset, (((relocatedValue>>1) & 0xFF) | (data.at<std::uint16_t>(offset) & 0xFF00)));
+		data.write<std::uint16_t>(offset, (((relocatedValue>>1) & 0xFF) | (data.read<std::uint16_t>(offset) & 0xFF00)));
 	}
 
 	bool is_absolute() const {
@@ -157,7 +157,7 @@ struct arm_arm_b_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
-			arm_relocator::b24_arm_string(data.at<uint32_t>(offset), value),
+			arm_relocator::b24_arm_string(data.read<uint32_t>(offset), value),
 			lyn::event_code::ALLOW_NONE
 		);
 	}
@@ -165,7 +165,7 @@ struct arm_arm_b_reloc : public arm_relocator::relocatelet {
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
 		std::uint32_t relocatedValue = (value + addend - offset - 8);
 
-		data.write<std::uint32_t>(offset, (((relocatedValue>>2) & 0xFFFFFF) | (data.at<uint32_t>(offset) & 0xFF000000)));
+		data.write<std::uint32_t>(offset, (((relocatedValue>>2) & 0xFFFFFF) | (data.read<uint32_t>(offset) & 0xFF000000)));
 	}
 
 	bool is_absolute() const {
@@ -309,7 +309,7 @@ std::string arm_relocator::bl_op2_string(const std::string& valueString) {
 section_data arm_relocator::make_thumb_veneer(const std::string& symbol, int addend) {
 	section_data result;
 
-	result.data().resize(0x10);
+	result.resize(0x10);
 
 	result.write<std::uint16_t>(0x00, 0x4778);     // bx pc
 	result.write<std::uint16_t>(0x02, 0x46C0);     // nop
@@ -329,7 +329,7 @@ section_data arm_relocator::make_thumb_veneer(const std::string& symbol, int add
 section_data arm_relocator::make_arm_veneer(const std::string& symbol, int addend) {
 	section_data result;
 
-	result.data().resize(0x0C);
+	result.resize(0x0C);
 
 	result.write<std::uint32_t>(0x00, 0xE59FC000); // ldr ip, =target
 	result.write<std::uint32_t>(0x04, 0xE12FFF1C); // bx ip

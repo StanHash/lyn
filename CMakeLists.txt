@@ -30,6 +30,9 @@ set(LYN_SOURCE_LIST
 
 	util/hex_write.h
 
+	core/data_chunk.h
+	core/data_chunk.cpp
+
 	core/binary_file.h
 	core/binary_file.cpp
 

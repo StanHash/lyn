@@ -28,6 +28,7 @@ void section_data::set_mapping(unsigned int offset, mapping::type_enum type) {
 	});
 }
 
+/*
 void section_data::combine_with(const section_data& other) {
 	mMappings.reserve(mMappings.size() + other.mMappings.size());
 	mSymbols.reserve(mSymbols.size() + other.mSymbols.size());
@@ -73,5 +74,6 @@ void section_data::combine_with(section_data&& other) {
 
 	binary_file::combine_with(other);
 }
+//*/
 
 } // namespace lyn
