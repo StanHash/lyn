@@ -91,7 +91,15 @@ void event_object::append_from_elf(const char* fileName) {
 			// TODO: put filename in name (whenever name will be useful)
 
 			section.set_name(elfFile.section_name(i));
-			section.load_from_other(file, loc.file_offset, loc.data_size);
+
+			section.clear();
+			section.reserve(loc.data_size);
+
+			std::copy(
+				std::next(file.begin(), loc.file_offset),
+				std::next(file.begin(), loc.file_offset+loc.data_size),
+				std::back_inserter(section)
+			);
 
 			outMap[i] = true;
 		}

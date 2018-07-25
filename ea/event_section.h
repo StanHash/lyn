@@ -18,7 +18,7 @@ public:
 	event_section& operator = (const event_section& other);
 	event_section& operator = (event_section&& other);
 
-	void write_to_stream(std::ostream& output, const binary_file& base) const;
+	void write_to_stream(std::ostream& output, const data_chunk& base) const;
 
 	void resize(unsigned size);
 

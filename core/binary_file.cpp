@@ -13,27 +13,28 @@ void binary_file::load_from_stream(std::istream& input) {
 		*it = input.get();
 }
 
-void binary_file::load_from_other(const binary_file &other, unsigned int start, int size) {
-	if (size < 0)
-		size = other.size() - start;
+void binary_file::error(const char* format, ...) const {
+	std::va_list args;
 
-	if (start > other.size())
-		return; // TODO: throw exception
+	va_start(args, format);
 
-	if (start+size > other.size())
-		return; // TODO: throw exception
+	unsigned stringSize; {
+		std::va_list argsCpy;
+		va_copy(argsCpy, args);
 
-	clear();
-	reserve(size);
+		stringSize = std::vsnprintf(nullptr, 0, format, argsCpy);
+		va_end(argsCpy);
+	}
 
-	std::copy(
-		std::next(other.begin(), start),
-		std::next(other.begin(), start+size),
-		std::back_inserter(*this)
-	);
+	std::vector<char> buf(stringSize + 1);
+	std::vsnprintf(buf.data(), buf.size(), format, args);
+
+	va_end(args);
+
+	throw std::runtime_error(std::string(buf.begin(), buf.end())); // TODO: better error
 }
 
-void binary_file::ensure_aligned(int align) {
+void binary_file::ensure_aligned(unsigned align) {
 	if (unsigned off = (size() % align))
 		resize(size() + (align - off));
 }

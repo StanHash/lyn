@@ -1,11 +1,13 @@
 #ifndef SECTION_DATA_H
 #define SECTION_DATA_H
 
-#include "binary_file.h"
+#include <string>
+
+#include "data_chunk.h"
 
 namespace lyn {
 
-class section_data : public binary_file {
+class section_data : public data_chunk {
 public:
 	struct mapping {
 		enum type_enum {

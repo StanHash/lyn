@@ -45,7 +45,7 @@ event_section& event_section::operator = (event_section&& other) {
 	return *this;
 }
 
-void event_section::write_to_stream(std::ostream& output, const binary_file& base) const {
+void event_section::write_to_stream(std::ostream& output, const data_chunk& base) const {
 	for (unsigned pos = 0; pos < mCodeMap.size();) {
 		if (mCodeMap[pos] < 0) {
 			auto now = std::next(mCodeMap.begin(), pos);
