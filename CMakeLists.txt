@@ -33,8 +33,8 @@ set(LYN_SOURCE_LIST
 	core/data_chunk.h
 	core/data_chunk.cpp
 
-	core/binary_file.h
-	core/binary_file.cpp
+	core/data_file.h
+	core/data_file.cpp
 
 	ea/event_code.h
 	ea/event_code.cpp

@@ -1,8 +1,8 @@
 #ifndef EVENT_SECTION_H
 #define EVENT_SECTION_H
 
-#include "event_code.h"
-#include "core/binary_file.h"
+#include "ea/event_code.h"
+#include "core/data_chunk.h"
 
 #include <iostream>
 

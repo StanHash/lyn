@@ -8,6 +8,7 @@
 #include "elfcpp/elfcpp_file.h"
 #include "elfcpp/arm.h"
 
+#include "core/data_file.h"
 #include "ea/event_section.h"
 #include "util/hex_write.h"
 
@@ -38,7 +39,7 @@ const int Elf_file<Size, BigEndian, File>::rela_size;
 namespace lyn {
 
 void event_object::append_from_elf(const char* fileName) {
-	binary_file file; {
+	data_file file; {
 		std::ifstream fileStream;
 
 		fileStream.open(fileName, std::ios::in | std::ios::binary);
@@ -50,7 +51,7 @@ void event_object::append_from_elf(const char* fileName) {
 		fileStream.close();
 	}
 
-	elfcpp::Elf_file<32, false, lyn::binary_file> elfFile(&file);
+	elfcpp::Elf_file<32, false, lyn::data_file> elfFile(&file);
 
 	auto readString = [&file] (elfcpp::Shdr<32, false> section, unsigned offset) -> std::string {
 		return file.cstr_at(section.get_sh_offset() + offset);
@@ -115,7 +116,7 @@ void event_object::append_from_elf(const char* fileName) {
 			const elfcpp::Shdr<32, false> nameShdr(&file, elfFile.section_header(header.get_sh_link()));
 
 			for (unsigned i = 0; i < count; ++i) {
-				elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+				elfcpp::Sym<32, false> sym(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
 				));
@@ -190,12 +191,12 @@ void event_object::append_from_elf(const char* fileName) {
 			auto& section = newSections.at(header.get_sh_info());
 
 			for (unsigned i = 0; i < count; ++i) {
-				const elfcpp::Rel<32, false> rel(&file, binary_file::Location(
+				const elfcpp::Rel<32, false> rel(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
 				));
 
-				const elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+				const elfcpp::Sym<32, false> sym(&file, data_file::Location(
 					symShdr.get_sh_offset() + elfcpp::elf_r_sym<32>(rel.get_r_info()) * symShdr.get_sh_entsize(),
 					symShdr.get_sh_entsize()
 				));
@@ -227,12 +228,12 @@ void event_object::append_from_elf(const char* fileName) {
 			auto& section = newSections.at(header.get_sh_info());
 
 			for (unsigned i = 0; i < count; ++i) {
-				const elfcpp::Rela<32, false> rela(&file, binary_file::Location(
+				const elfcpp::Rela<32, false> rela(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
 				));
 
-				const elfcpp::Sym<32, false> sym(&file, binary_file::Location(
+				const elfcpp::Sym<32, false> sym(&file, data_file::Location(
 					symShdr.get_sh_offset() + elfcpp::elf_r_sym<32>(rela.get_r_info()) * symShdr.get_sh_entsize(),
 					symShdr.get_sh_entsize()
 				));

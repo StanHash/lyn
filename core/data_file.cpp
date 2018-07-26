@@ -1,10 +1,10 @@
-#include "binary_file.h"
+#include "data_file.h"
 
 #include <iterator>
 
 namespace lyn {
 
-void binary_file::load_from_stream(std::istream& input) {
+void data_file::load_from_stream(std::istream& input) {
 	input.seekg(0, std::ios::end);
 	resize(input.tellg());
 	input.seekg(0);
@@ -13,7 +13,7 @@ void binary_file::load_from_stream(std::istream& input) {
 		*it = input.get();
 }
 
-void binary_file::error(const char* format, ...) const {
+void data_file::error(const char* format, ...) const {
 	std::va_list args;
 
 	va_start(args, format);
@@ -34,7 +34,7 @@ void binary_file::error(const char* format, ...) const {
 	throw std::runtime_error(std::string(buf.begin(), buf.end())); // TODO: better error
 }
 
-void binary_file::ensure_aligned(unsigned align) {
+void data_file::ensure_aligned(unsigned align) {
 	if (unsigned off = (size() % align))
 		resize(size() + (align - off));
 }
