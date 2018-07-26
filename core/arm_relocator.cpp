@@ -14,7 +14,7 @@ struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(
 			lyn::event_code::CODE_POIN,
 			arm_relocator::abs_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
-			lyn::event_code::ALLOW_NONE
+			false
 		);
 	}
 
@@ -28,7 +28,7 @@ struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
 			arm_relocator::rel_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
-			lyn::event_code::ALLOW_NONE
+			false
 		);
 	}
 
@@ -42,7 +42,7 @@ struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(
 			lyn::event_code::CODE_SHORT,
 			arm_relocator::abs_reloc_string(sym, data.read<std::uint16_t>(offset) + addend),
-			lyn::event_code::ALLOW_NONE
+			false
 		);
 	}
 
@@ -56,7 +56,7 @@ struct arm_data_abs8_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(
 			lyn::event_code::CODE_BYTE,
 			arm_relocator::abs_reloc_string(sym, data.read_byte(offset) + addend),
-			lyn::event_code::ALLOW_NONE
+			false
 		);
 	}
 
@@ -71,7 +71,7 @@ struct arm_thumb_b_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::b_string(value)
-		}, lyn::event_code::ALLOW_NONE);
+		}, false);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -99,7 +99,7 @@ struct arm_thumb_bcond_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::bcond_string((data.read<std::uint16_t>(offset) & 0xFF00), value)
-		}, lyn::event_code::ALLOW_NONE);
+		}, false);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -128,7 +128,7 @@ struct arm_thumb_bl_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::bl_op1_string(value),
 			arm_relocator::bl_op2_string(value)
-		}, lyn::event_code::ALLOW_NONE);
+		}, false);
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -158,7 +158,7 @@ struct arm_arm_b_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
 			arm_relocator::b24_arm_string(data.read<uint32_t>(offset), value),
-			lyn::event_code::ALLOW_NONE
+			false
 		);
 	}
 
