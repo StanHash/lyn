@@ -39,17 +39,7 @@ const int Elf_file<Size, BigEndian, File>::rela_size;
 namespace lyn {
 
 void event_object::append_from_elf(const char* fileName) {
-	data_file file; {
-		std::ifstream fileStream;
-
-		fileStream.open(fileName, std::ios::in | std::ios::binary);
-
-		if (!fileStream.is_open())
-			throw std::runtime_error(std::string("Couldn't open file for read: ").append(fileName)); // TODO: better error
-
-		file.load_from_stream(fileStream);
-		fileStream.close();
-	}
+	data_file file(fileName);
 
 	elfcpp::Elf_file<32, false, lyn::data_file> elfFile(&file);
 

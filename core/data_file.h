@@ -38,6 +38,12 @@ struct data_file : public data_chunk {
 	using location_type = Location;
 	using view_type     = View;
 
+	data_file(const char* fileName);
+	data_file(const std::string& fileName);
+	data_file(std::string&& fileName);
+
+	using data_chunk::data_chunk;
+
 	view_type view(size_t offset, size_t size) const {
 		if ((offset + size) > this->size())
 			throw std::runtime_error("Tried to load data out of file boundaries"); // TODO: better error
@@ -52,11 +58,12 @@ struct data_file : public data_chunk {
 		return View(this, location.file_offset, location.data_size);
 	}
 
-	void load_from_stream(std::istream& input);
-
 	void error(const char* format, ...) const;
 
 	void ensure_aligned(unsigned align);
+
+private:
+	std::string mFileName;
 };
 
 } // namespace lyn

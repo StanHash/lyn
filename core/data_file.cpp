@@ -1,16 +1,30 @@
 #include "data_file.h"
 
+#include <fstream>
 #include <iterator>
 
 namespace lyn {
 
-void data_file::load_from_stream(std::istream& input) {
+data_file::data_file(const char* fileName)
+	: data_file(std::string(fileName)) {}
+
+data_file::data_file(const std::string& fileName)
+	: data_file(std::string(fileName)) {}
+
+data_file::data_file(std::string&& fileName)
+	: mFileName(std::move(fileName)) {
+	std::ifstream input;
+
+	input.open(mFileName, std::ios::in | std::ios::binary);
+
+	if (!input.is_open())
+		throw std::runtime_error(std::string("Couldn't open file for read: ").append(fileName)); // TODO: better error
+
 	input.seekg(0, std::ios::end);
 	resize(input.tellg());
-	input.seekg(0);
 
-	for (auto it = begin(); it != end(); ++it)
-		*it = input.get();
+	input.seekg(0);
+	input.read(reinterpret_cast<std::ifstream::char_type*>(data()), size());
 }
 
 void data_file::error(const char* format, ...) const {
