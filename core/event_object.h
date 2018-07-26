@@ -33,7 +33,7 @@ public:
 
 	void write_events(std::ostream& output) const;
 
-	const std::vector<section_data::symbol> absolute_symbols() const { return mAbsoluteSymbols; }
+	const std::vector<section_data::symbol>& absolute_symbols() const { return mAbsoluteSymbols; }
 
 private:
 	arm_relocator mRelocator;
