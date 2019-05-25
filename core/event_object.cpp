@@ -38,19 +38,22 @@ const int Elf_file<Size, BigEndian, File>::rela_size;
 
 namespace lyn {
 
-void event_object::append_from_elf(const char* fileName) {
+void event_object::append_from_elf(const char* fileName)
+{
 	data_file file(fileName);
 
 	elfcpp::Elf_file<32, false, lyn::data_file> elfFile(&file);
 
-	auto readString = [&file] (elfcpp::Shdr<32, false> section, unsigned offset) -> std::string {
+	auto readString = [&file] (elfcpp::Shdr<32, false> section, unsigned offset) -> std::string
+	{
 		return file.cstr_at(section.get_sh_offset() + offset);
 	};
 
 	std::vector<section_data> newSections(elfFile.shnum());
 	std::vector<bool> outMap(elfFile.shnum(), false);
 
-	auto getLocalSymbolName = [this] (int section, int index) -> std::string {
+	auto getLocalSymbolName = [this] (int section, int index) -> std::string
+	{
 		std::string result;
 		result.reserve(0x10);
 
@@ -62,7 +65,8 @@ void event_object::append_from_elf(const char* fileName) {
 		return result;
 	};
 
-	auto getGlobalSymbolName = [] (const char* name) -> std::string {
+	auto getGlobalSymbolName = [] (const char* name) -> std::string
+	{
 		std::string result(name);
 		std::size_t find = 0;
 
@@ -72,10 +76,12 @@ void event_object::append_from_elf(const char* fileName) {
 		return result;
 	};
 
-	for (unsigned i = 0; i < elfFile.shnum(); ++i) {
+	for (unsigned i = 0; i < elfFile.shnum(); ++i)
+	{
 		auto flags = elfFile.section_flags(i);
 
-		if ((flags & elfcpp::SHF_ALLOC) && !(flags & elfcpp::SHF_WRITE)) {
+		if ((flags & elfcpp::SHF_ALLOC) && !(flags & elfcpp::SHF_WRITE))
+		{
 			auto& section = newSections.at(i);
 			auto  loc     = elfFile.section_contents(i);
 
@@ -96,24 +102,30 @@ void event_object::append_from_elf(const char* fileName) {
 		}
 	}
 
-	for (unsigned si = 0; si < elfFile.shnum(); ++si) {
+	for (unsigned si = 0; si < elfFile.shnum(); ++si)
+	{
 		elfcpp::Shdr<32, false> header(&file, elfFile.section_header(si));
 
-		switch (header.get_sh_type()) {
+		switch (header.get_sh_type())
+		{
 
-		case elfcpp::SHT_SYMTAB: {
+		case elfcpp::SHT_SYMTAB:
+		{
 			const unsigned count = header.get_sh_size() / header.get_sh_entsize();
 			const elfcpp::Shdr<32, false> nameShdr(&file, elfFile.section_header(header.get_sh_link()));
 
-			for (unsigned i = 0; i < count; ++i) {
+			for (unsigned i = 0; i < count; ++i)
+			{
 				elfcpp::Sym<32, false> sym(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
 				));
 
-				switch (sym.get_st_shndx()) {
+				switch (sym.get_st_shndx())
+				{
 
-				case elfcpp::SHN_ABS: {
+				case elfcpp::SHN_ABS:
+				{
 					if (sym.get_st_bind() != elfcpp::STB_GLOBAL)
 						break;
 
@@ -126,7 +138,11 @@ void event_object::append_from_elf(const char* fileName) {
 					break;
 				} // case elfcpp::SHN_ABS
 
-				default: {
+				default:
+				{
+					if (outMap.size() > sym.get_st_shndx())
+						break;
+
 					if (!outMap.at(sym.get_st_shndx()))
 						break;
 
@@ -134,16 +150,24 @@ void event_object::append_from_elf(const char* fileName) {
 
 					std::string name = readString(nameShdr, sym.get_st_name());
 
-					if (sym.get_st_type() == elfcpp::STT_NOTYPE && sym.get_st_bind() == elfcpp::STB_LOCAL) {
+					if (sym.get_st_type() == elfcpp::STT_NOTYPE && sym.get_st_bind() == elfcpp::STB_LOCAL)
+					{
 						std::string subString = name.substr(0, 3);
 
-						if ((name == "$t") || (subString == "$t.")) {
+						if ((name == "$t") || (subString == "$t."))
+						{
 							section.set_mapping(sym.get_st_value(), section_data::mapping::Thumb);
 							break;
-						} else if ((name == "$a") || (subString == "$a.")) {
+						}
+
+						if ((name == "$a") || (subString == "$a."))
+						{
 							section.set_mapping(sym.get_st_value(), section_data::mapping::ARM);
 							break;
-						} else if ((name == "$d") || (subString == "$d.")) {
+						}
+
+						if ((name == "$d") || (subString == "$d."))
+						{
 							section.set_mapping(sym.get_st_value(), section_data::mapping::Data);
 							break;
 						}
@@ -169,7 +193,8 @@ void event_object::append_from_elf(const char* fileName) {
 			break;
 		} // case elfcpp::SHT_SYMTAB
 
-		case elfcpp::SHT_REL: {
+		case elfcpp::SHT_REL:
+		{
 			if (!outMap.at(header.get_sh_info()))
 				break;
 
@@ -180,7 +205,8 @@ void event_object::append_from_elf(const char* fileName) {
 
 			auto& section = newSections.at(header.get_sh_info());
 
-			for (unsigned i = 0; i < count; ++i) {
+			for (unsigned i = 0; i < count; ++i)
+			{
 				const elfcpp::Rel<32, false> rel(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
@@ -206,7 +232,8 @@ void event_object::append_from_elf(const char* fileName) {
 			break;
 		} // case elfcpp::SHT_REL
 
-		case elfcpp::SHT_RELA: {
+		case elfcpp::SHT_RELA:
+		{
 			if (!outMap.at(header.get_sh_info()))
 				break;
 
@@ -217,7 +244,8 @@ void event_object::append_from_elf(const char* fileName) {
 
 			auto& section = newSections.at(header.get_sh_info());
 
-			for (unsigned i = 0; i < count; ++i) {
+			for (unsigned i = 0; i < count; ++i)
+			{
 				const elfcpp::Rela<32, false> rela(&file, data_file::Location(
 					header.get_sh_offset() + i * header.get_sh_entsize(),
 					header.get_sh_entsize()
@@ -248,9 +276,12 @@ void event_object::append_from_elf(const char* fileName) {
 
 	// Remove empty sections
 
-	newSections.erase(std::remove_if(newSections.begin(), newSections.end(), [] (const section_data& section) {
-		return (section.size()==0);
-	}), newSections.end());
+	newSections.erase(std::remove_if(newSections.begin(), newSections.end(),
+		[] (const section_data& section)
+		{
+			return (section.size()==0);
+		}
+	), newSections.end());
 
 	// Add to existing section list
 
