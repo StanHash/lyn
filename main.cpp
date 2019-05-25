@@ -2,12 +2,14 @@
 #include <fstream>
 #include <cstring>
 
+#include "config.h"
+
 #include "core/event_object.h"
 #include "util/hex_write.h"
 
 void print_usage(std::ostream& out)
 {
-	out << "lyn usage:" << std::endl;
+	out << PROJECT_NAME " " PROJECT_VERSION " usage:" << std::endl;
 	out << "  lyn <object>... [-[no]link] [-[no]longcalls] [-[no]temp] [-[no]hook] [-raw]" << std::endl;
 	out << "  lyn diff <old object> <new object>" << std::endl;
 }
