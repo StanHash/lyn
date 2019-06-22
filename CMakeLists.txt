@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(lyn VERSION "2.5.1")
+project(lyn VERSION "2.5.2")
 
 option(USE_STATIC_LIBRARIES "When on, passes -static to the compiler" ON)
 

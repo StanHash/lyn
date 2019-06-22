@@ -140,7 +140,7 @@ void event_object::append_from_elf(const char* fileName)
 
 				default:
 				{
-					if (outMap.size() > sym.get_st_shndx())
+					if (sym.get_st_shndx() >= outMap.size())
 						break;
 
 					if (!outMap.at(sym.get_st_shndx()))
