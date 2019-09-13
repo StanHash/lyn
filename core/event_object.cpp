@@ -126,13 +126,12 @@ void event_object::append_from_elf(const char* fileName)
 
 				case elfcpp::SHN_ABS:
 				{
-					if (sym.get_st_bind() != elfcpp::STB_GLOBAL)
-						break;
+					auto name = (sym.get_st_bind() == elfcpp::STB_LOCAL)
+						? getLocalSymbolName(si, i)
+						: getGlobalSymbolName(readString(nameShdr, sym.get_st_name()).c_str());
 
 					mAbsoluteSymbols.push_back(section_data::symbol {
-						readString(nameShdr, sym.get_st_name()),
-						sym.get_st_value(),
-						false
+						name, sym.get_st_value(), false
 					});
 
 					break;
@@ -339,22 +338,22 @@ void event_object::try_relocate_relatives() {
 				[this, &section, offset] (section_data::relocation& relocation) -> bool {
 					unsigned symOffset = 0;
 
+					auto relocatelet = mRelocator.get_relocatelet(relocation.type);
+
 					for (auto& symSection : mSections) {
 						for (auto& symbol : symSection.symbols()) {
 							if (symbol.name != relocation.symbolName)
 								continue;
 
-							if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
-								if (!relocatelet->is_absolute()) {
-									relocatelet->apply_relocation(
-										section,
-										relocation.offset,
-										symOffset + symbol.offset,
-										relocation.addend
-									);
+							if (relocatelet && !relocatelet->is_absolute()) {
+								relocatelet->apply_relocation(
+									section,
+									relocation.offset,
+									symOffset + symbol.offset,
+									relocation.addend
+								);
 
-									return true;
-								}
+								return true;
 							}
 
 							relocation.symbolName = "CURRENTOFFSET";
@@ -481,14 +480,31 @@ void event_object::write_events(std::ostream& output) const {
 
 		output << "ALIGN 4" << std::endl;
 
-		for (auto& relocation : section.relocations()) {
+		for (auto& relocation : section.relocations())
+		{
 			if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
+			{
+				// This is probably the worst hack I've ever written
+				// lyn needs a rewrite
+
+				// (I makes sure that relative relocations to known absolute values will reference the value and not the name)
+
+				auto it = std::find_if(
+					mAbsoluteSymbols.begin(),
+					mAbsoluteSymbols.end(),
+					[&] (const section_data::symbol& sym) { return sym.name == relocation.symbolName; });
+
+				auto symName = (it == mAbsoluteSymbols.end())
+					? relocation.symbolName
+					: util::make_hex_string("$", it->offset);
+
 				events.map_code(relocation.offset, relocatelet->make_event_code(
 					section,
 					relocation.offset,
-					relocation.symbolName,
+					symName,
 					relocation.addend
 				));
+			}
 			else if (relocation.type != elfcpp::R_ARM_V4BX) // dirty hack
 				throw std::runtime_error(std::string("unhandled relocation type #").append(std::to_string(relocation.type)));
 		}
