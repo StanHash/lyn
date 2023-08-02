@@ -23,8 +23,10 @@ The name of this tool is "lyn" and is not intended to be capitalized.
 
 ### Deprecated
 
-- auto-replacement being enabled by default. Redefinition of functions symbols with the same name as ones from the reference outside of auto_replace sections will still work but lyn will raise a warning. If this behavior is desired, a new commandline option `--always-allow-replace` can be used to opt-in (doing so will be required in next 4.x+).
-- automatic detection of the reference object. One should pass it explicitement via the `--reference` option.
+These features will be removed by lyn 4.x (if we ever get there).
+
+- auto-replacement being enabled by default. Redefinition of functions symbols with the same name as ones from the reference outside of auto_replace sections will still work but lyn will raise a warning. If this behavior is desired, a new commandline option `--always-allow-replace` can be used to opt-in.
+- automatic detection of the reference object. One should pass it explicitely via the `--reference` option.
 
 ### Removed
 
