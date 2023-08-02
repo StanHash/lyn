@@ -1,49 +1,50 @@
 # `lyn`
 
-Aims to bring the functionalities of a proper linker to EA.
+`lyn` is being rewritten. The rewritten lyn will be lyn 3.x.
 
-(My goal will be to progressively port different EA-outputting tools to object-outputting tools, as well as allowing `lyn` to output directly to binary, so that using EA will eventually become a non-requirement.)
+`lyn` translates relocatable ARM ELF objects into a sequence of Event Assembler commands, allowing it to work as a basic but proper linker. `lyn` output is currently tailored for ColorzCore.
 
-What `lyn` does is it takes any number of [ELF object files](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) plus a bunch of options, and outputs labeled EA code to stdout.
+The name of this tool is "lyn" and is not intended to be capitalized.
 
-See the [FEU Thread](http://feuniverse.us/t/ea-asm-tool-lyn-elf2ea-if-you-will/2986?u=stanh) for a detailed walkthrough and other goodies.
+## Planned features for 3.x
 
-## Usage
+### Returning
+
+- basic section outputting (symbols, data, relocations).
+- auto-generating hooks for jumping to replacement functions.
+- the ability to transform relative calls (BLs) into long calls via generated veneers.
+
+### New
+
+- output arbitrary sections to fixed addresses using directives encoded as section name suffixes
+- explicit replacement sections and auto_replace sections.
+- basic RAM section support, both fixed address and floating (enabled by some EA trickery devised by Mokha). Such section can only contain local (=static) labels because of EA limitations.
+- emission of PROTECT and ASSERT in the output event to enable stronger error cathing.
+
+### Deprecated
+
+- auto-replacement being enabled by default. Redefinition of functions symbols with the same name as ones from the reference outside of auto_replace sections will still work but lyn will raise a warning. If this behavior is desired, a new commandline option `--always-allow-replace` can be used to opt-in (doing so will be required in next 4.x+).
+- automatic detection of the reference object. One should pass it explicitement via the `--reference` option.
+
+### Removed
+
+- most old commandline options and their associated features.
+  - `-[no]hook` and `-[no]longcall` are kept as backward compatible aliases, but will have lyn raise warnings.
+- `lyn diff`
+
+## Planned interface
 
 ```
-lyn [-[no]link] [-[no]longcalls] [-[no]temp] [-[no]hook] [-raw] <elf...>
+lyn [OPTIONS] ELVES...
+Options:
+  -o OUTPUT,--output OUTPUT   Specifies the output file. Defaults to outputting to stdout.
+  -r ELF,--reference ELF      Specifies the reference ELF.
+  --always-allow-replace      Treat functions that have the same name as one from the reference as being part of a auto_replace section.
+  --extend-calls              Transform every BL relocation to undefined symbols into a call to a absolute jump.
+  --to-stdout                 Enables inctext-compatibility mode, which disables some features.
+  --strict                    Disables deprecated features.
+  -h,--help                   Display basic help.
+  -hook                       Deprecated, alias of --always-allow-replace
+  -longcalls                  Deprecated, alias of --extend-calls
+  -nohook,-nolongcalls        Deprecated, ignored
 ```
-
-(parameters, including elf file references, can be arranged in any order)
-
-- `-[no]link` specifies whether anticipated linking is to occur (elves linking between themselves) (default is on)
-- `-[no]longcalls` specifies whether lyn should transform any relative jump/reference to an absolute one (useful when linking code using `bl`s to symbols out of range) (default is off)
-- `-[no]temp` specifies whether lyn should keep & print *all* local symbols (when off, only the ones needed for relocation are kept) (default is off)
-- `-[no]hook` specifies whether automatic routine replacement hooks should be inserted (this happens when an object-relative symbol and an absolute symbol in two different elves have the same name, then lyn will output a "hook" to where the absolute symbol points to that will jump to the object-relative location) (default is on)
-
-## Building
-
-You need [CMake](https://cmake.org/) and a working C++11 compiler.
-
-```sh
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
-## Planned features
-
-- Bugfixes (always)
-- A partial rewrite that would imply:
-  - Decoupling the object interface with the event-gerenating part (and then put the object bit into a reusable library (to make writing other object-generating tools))
-  - Decoupling the object interface with the elf-reading bit, allowing me to define other ways of reading objects.
-- Rewrite the way relocations are handled. The current handler was written back when I didn't have a very good understanding of the way relocations work.
-- Allowing handling not only only read-only allocated sections (`.text`, `.rodata`, etc) but also writable allocated sections (`.data`, `.bss`, etc). Idk how that'd work with EA tho...
-- Cleanup, clarify and expand on the "auto hook" feature. Allow "special sections" that would be a way to encode data to output at a specific location in the target binary.
-- Allowing other output formats:
-  - Object files (in which case `lyn`'s role would be to merge/simplify objects rather than "translating" them)
-  - I'm thinking [`json-bpatch`](https://github.com/zahlman/json_bpatch) since zahl himself mentionned being interested.
-  - **Direct output to target binary, and allowing some kind of control over how to do that.**
-
-**If you have any questions, feel free to ask in the [FEU Thread](http://feuniverse.us/t/ea-asm-tool-lyn-elf2ea-if-you-will/2986?u=stanh) or on the [FEU Discord](http://feuniverse.us/t/feu-discord-server/1480?u=stanh).**

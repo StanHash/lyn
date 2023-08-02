@@ -191,26 +191,6 @@ constexpr Elf32_Word SHF_MASKPROC = 0xF0000000;
 // Symbol Table
 // https://www.sco.com/developers/gabi/latest/ch4.symtab.html
 
-struct Elf32_Sym
-{
-    Elf32_Word st_name;
-    Elf32_Addr st_value;
-    Elf32_Word st_size;
-    unsigned char st_info;
-    unsigned char st_other;
-    Elf32_Half st_shndx;
-};
-
-struct Elf64_Sym
-{
-    Elf64_Word st_name;
-    unsigned char st_info;
-    unsigned char st_other;
-    Elf64_Half st_shndx;
-    Elf64_Addr st_value;
-    Elf64_Xword st_size;
-};
-
 #define NATELF_ELF32_ST_BIND(i) ((i) >> 4)
 #define NATELF_ELF32_ST_TYPE(i) (0xF & (i))
 #define NATELF_ELF32_ST_INFO(b, t) (((b) << 4) + (0xF & (t)))
@@ -221,6 +201,58 @@ struct Elf64_Sym
 
 #define NATELF_ELF32_ST_VISIBILITY(o) (0x3 & (o))
 #define NATELF_ELF64_ST_VISIBILITY(o) (0x3 & (o))
+
+struct Elf32_Sym
+{
+    Elf32_Word st_name;
+    Elf32_Addr st_value;
+    Elf32_Word st_size;
+    unsigned char st_info;
+    unsigned char st_other;
+    Elf32_Half st_shndx;
+
+    constexpr unsigned char GetBind() const
+    {
+        return NATELF_ELF32_ST_BIND(st_info);
+    }
+
+    constexpr unsigned char GetType() const
+    {
+        return NATELF_ELF32_ST_TYPE(st_info);
+    }
+
+    // helper
+    constexpr bool IsDefined() const
+    {
+        return st_shndx != SHN_UNDEF;
+    }
+};
+
+struct Elf64_Sym
+{
+    Elf64_Word st_name;
+    unsigned char st_info;
+    unsigned char st_other;
+    Elf64_Half st_shndx;
+    Elf64_Addr st_value;
+    Elf64_Xword st_size;
+
+    constexpr unsigned char GetBind() const
+    {
+        return NATELF_ELF64_ST_BIND(st_info);
+    }
+
+    constexpr unsigned char GetType() const
+    {
+        return NATELF_ELF64_ST_TYPE(st_info);
+    }
+
+    // helper
+    constexpr bool IsDefined() const
+    {
+        return st_shndx != SHN_UNDEF;
+    }
+};
 
 constexpr unsigned char STB_LOCAL = 0;
 constexpr unsigned char STB_GLOBAL = 1;
@@ -250,32 +282,6 @@ constexpr unsigned char STV_PROTECTED = 3;
 // Relocation
 // https://www.sco.com/developers/gabi/latest/ch4.reloc.html
 
-struct Elf32_Rel
-{
-    Elf32_Addr r_offset;
-    Elf32_Word r_info;
-};
-
-struct Elf32_Rela
-{
-    Elf32_Addr r_offset;
-    Elf32_Word r_info;
-    Elf32_Sword r_addend;
-};
-
-struct Elf64_Rel
-{
-    Elf64_Addr r_offset;
-    Elf64_Xword r_info;
-};
-
-struct Elf64_Rela
-{
-    Elf64_Addr r_offset;
-    Elf64_Xword r_info;
-    Elf64_Sxword r_addend;
-};
-
 #define NATELF_ELF32_R_SYM(i) ((i) >> 8)
 #define NATELF_ELF32_R_TYPE(i) (0xFF & (i))
 #define NATELF_ELF32_R_INFO(s, t) (((s) << 8) + (0xFF & (t)))
@@ -283,6 +289,92 @@ struct Elf64_Rela
 #define NATELF_ELF64_R_SYM(i) ((i) >> 32)
 #define NATELF_ELF64_R_TYPE(i) (0xFFFFFFFFL & (i))
 #define NATELF_ELF64_R_INFO(s, t) (((s) << 32) + (0xFFFFFFFFL & (t)))
+
+struct Elf32_Rel
+{
+    Elf32_Addr r_offset;
+    Elf32_Word r_info;
+
+    constexpr Elf32_Word GetSym() const
+    {
+        return NATELF_ELF32_R_SYM(r_info);
+    }
+
+    constexpr Elf32_Word GetType() const
+    {
+        return NATELF_ELF32_R_TYPE(r_info);
+    }
+
+    constexpr Elf32_Sword GetAddend() const
+    {
+        return 0;
+    }
+};
+
+struct Elf32_Rela
+{
+    Elf32_Addr r_offset;
+    Elf32_Word r_info;
+    Elf32_Sword r_addend;
+
+    constexpr Elf32_Word GetSym() const
+    {
+        return NATELF_ELF32_R_SYM(r_info);
+    }
+
+    constexpr Elf32_Word GetType() const
+    {
+        return NATELF_ELF32_R_TYPE(r_info);
+    }
+
+    constexpr Elf32_Sword GetAddend() const
+    {
+        return r_addend;
+    }
+};
+
+struct Elf64_Rel
+{
+    Elf64_Addr r_offset;
+    Elf64_Xword r_info;
+
+    constexpr Elf64_Xword GetSym() const
+    {
+        return NATELF_ELF64_R_SYM(r_info);
+    }
+
+    constexpr Elf64_Xword GetType() const
+    {
+        return NATELF_ELF64_R_TYPE(r_info);
+    }
+
+    constexpr Elf64_Sxword GetAddend() const
+    {
+        return 0;
+    }
+};
+
+struct Elf64_Rela
+{
+    Elf64_Addr r_offset;
+    Elf64_Xword r_info;
+    Elf64_Sxword r_addend;
+
+    constexpr Elf64_Xword GetSym() const
+    {
+        return NATELF_ELF64_R_SYM(r_info);
+    }
+
+    constexpr Elf64_Xword GetType() const
+    {
+        return NATELF_ELF64_R_TYPE(r_info);
+    }
+
+    constexpr Elf64_Sxword GetAddend() const
+    {
+        return r_addend;
+    }
+};
 
 // TODO: executable ELF definitions
 

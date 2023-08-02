@@ -1,213 +1,144 @@
-#include <cstring>
-#include <fstream>
-#include <iostream>
+#include <cinttypes>
+#include <cstdio>
+#include <vector>
 
-#include "config.hh"
+#include "layout.hh"
+#include "lynelf.hh"
+#include "output.hh"
+#include "relocation.hh"
+#include "symtab.hh"
 
-#include "core/event_object.h"
-#include "util/hex_write.h"
+#include "fmt/format.h"
 
-void print_usage(std::ostream & out)
+std::vector<std::vector<std::uint8_t>> LoadRawElves(std::span<std::string_view const> const & elf_paths)
 {
-    out << LYN_PROGRAM_NAME " version " LYN_PROGRAM_VERSION << " <" << LYN_PROGRAM_WEB << ">" << std::endl
-        << std::endl
-        << "Usage:" << std::endl
-        << "  lyn <object>... [-[no]link] [-[no]longcalls] [-[no]temp] [-[no]hook] [-raw]" << std::endl
-        << "  lyn diff <old object> <new object>" << std::endl;
-}
+    std::vector<std::vector<std::uint8_t>> result;
 
-int do_diff(int argc, const char * const * argv)
-{
-    if (argc != 2)
+    for (auto & path : elf_paths)
     {
-        print_usage(std::cerr);
-        return 1;
-    }
+        std::string path_real(path);
 
-    try
-    {
-        lyn::event_object baseObject;
-        lyn::event_object otherObject;
+        FILE * own_file = std::fopen(path_real.c_str(), "rb");
 
-        baseObject.append_from_elf(argv[0]);
-        otherObject.append_from_elf(argv[1]);
-
-        struct sym_diff_data
+        if (own_file == nullptr)
         {
-            std::string baseName;
-            std::string otherName;
-        };
-
-        std::map<unsigned, sym_diff_data> symMap;
-
-        for (auto & sym : baseObject.absolute_symbols())
-            symMap[sym.offset].baseName = sym.name;
-
-        for (auto & sym : otherObject.absolute_symbols())
-            symMap[sym.offset].otherName = sym.name;
-
-        for (auto & pair : symMap)
-        {
-            auto address = pair.first;
-            auto & nameDiff = pair.second;
-
-            if (nameDiff.baseName == nameDiff.otherName)
-                continue;
-
-            if (nameDiff.baseName.empty())
-                std::cout << "+" << util::make_hex_string("$", address) << " " << nameDiff.otherName << std::endl;
-
-            else if (nameDiff.otherName.empty())
-                std::cout << "-" << util::make_hex_string("$", address) << " " << nameDiff.baseName << std::endl;
-
-            else
-                std::cout << ">" << util::make_hex_string("$", address) << " " << nameDiff.baseName << " "
-                          << nameDiff.otherName << std::endl;
+            throw std::runtime_error(fmt::format("error: failed to open '{0}' for read.", path));
         }
-    }
-    catch (const std::exception & e)
-    {
-        std::cerr << "[lyn diff] ERROR: " << e.what() << std::endl;
-        return 1;
+
+        std::vector<std::uint8_t> elf_data;
+
+        std::fseek(own_file, 0, SEEK_END);
+        elf_data.resize(ftell(own_file));
+
+        std::fseek(own_file, 0, SEEK_SET);
+        std::size_t read = fread(elf_data.data(), 1, elf_data.size(), own_file);
+
+        std::fclose(own_file);
+
+        if (read != elf_data.size())
+        {
+            throw std::runtime_error(fmt::format("error: IO error while attempting to read from '{0}'.", path));
+        }
+
+        result.push_back(std::move(elf_data));
     }
 
-    return 0;
+    return result;
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char const * argv[])
 {
-    if (argc < 2)
+    std::vector<std::string_view> elf_paths;
+    std::optional<std::string_view> reference_path;
+
+    for (int i = 1; i < argc; i++)
     {
-        print_usage(std::cerr);
-        return 1;
-    }
+        std::string_view arg_view(argv[i]);
 
-    if (!std::strcmp(argv[1], "diff"))
-        return do_diff(argc - 2, argv + 2);
-
-    struct
-    {
-        bool doLink = true;
-        bool longCall = false;
-        bool applyHooks = true;
-        bool printTemporary = false;
-    } options;
-
-    std::vector<std::string> elves;
-
-    for (int i = 1; i < argc; ++i)
-    {
-        std::string argument(argv[i]);
-
-        if (argument.size() == 0)
-            continue;
-
-        if (argument[0] == '-') // option
+        if (arg_view[0] == '-')
         {
-            if (argument == "-nolink")
-            {
-                options.doLink = false;
-                continue;
-            }
-
-            if (argument == "-link")
-            {
-                options.doLink = true;
-                continue;
-            }
-
-            if (argument == "-longcalls")
-            {
-                options.longCall = true;
-                continue;
-            }
-
-            if (argument == "-nolongcalls")
-            {
-                options.longCall = false;
-                continue;
-            }
-
-            if (argument == "-raw")
-            {
-                options.doLink = false;
-                options.longCall = false;
-                options.applyHooks = false;
-                continue;
-            }
-
-            if (argument == "-temp")
-            {
-                options.printTemporary = true;
-                continue;
-            }
-
-            if (argument == "-notemp")
-            {
-                options.printTemporary = false;
-                continue;
-            }
-
-            if (argument == "-hook")
-            {
-                options.applyHooks = true;
-                continue;
-            }
-
-            if (argument == "-nohook")
-            {
-                options.applyHooks = false;
-                continue;
-            }
         }
         else
-        { // elf
-            elves.push_back(std::move(argument));
+        {
+            std::fprintf(stderr, "ELF: %s\n", argv[i]);
+            elf_paths.push_back(arg_view);
         }
     }
 
     try
     {
-        lyn::event_object object;
+        // new process order:
+        // - load all elves
+        // - prepare layout add any extra sections if necessary (hooks)
+        // - relocate from reference
+        // - build global symtab
+        // - gc
+        // - finish layout (precise offsets)
+        // - relocate
+        // - output event
 
-        for (auto & elf : elves)
-            object.append_from_elf(elf.c_str());
+        std::optional<LynElf> reference_elf;
 
-        if (options.doLink)
-            object.try_relocate_relatives();
+        // TODO: build elf_paths
 
-        if (options.longCall)
-            object.try_transform_relatives();
+        // Step 1. Load all elves
 
-        if (options.doLink)
-            object.try_relocate_absolutes();
+        auto raw_elves = LoadRawElves(elf_paths);
 
-        if (!options.printTemporary)
-            object.remove_unnecessary_symbols();
+        std::vector<LynElf> elves;
 
-        object.cleanup();
-
-        if (options.applyHooks)
+        for (unsigned int i = 0; i < raw_elves.size(); i++)
         {
-            for (auto & hook : object.get_hooks())
+            auto & path = elf_paths[i];
+            auto & raw_elf = raw_elves[i];
+
+            LynElf lyn_elf(path, raw_elf);
+
+            if (lyn_elf.IsImplicitReference())
             {
-                lyn::event_object temp;
-
-                std::cout << "PUSH" << std::endl;
-                std::cout << "ORG $" << std::hex << (hook.originalOffset & (~1)) << std::endl;
-
-                temp.add_section(lyn::arm_relocator::make_thumb_veneer(hook.name, 0));
-                temp.write_events(std::cout);
-
-                std::cout << "POP" << std::endl;
+                // TODO: warn about implicit references
+                std::fprintf(stderr, "REF: %s\n", path.data());
+                reference_elf = { std::move(lyn_elf) };
+            }
+            else
+            {
+                elves.push_back(std::move(lyn_elf));
             }
         }
 
-        object.write_events(std::cout);
+        std::unordered_map<std::string_view, std::uint32_t> reference;
+
+        if (reference_elf != std::nullopt)
+            reference = reference_elf->BuildReferenceAddresses();
+
+        // Step 1.5. mark auto hooks
+        // TODO
+
+        // Step 2. prepare layout
+
+        auto layout = PrepareLayout(elves, reference);
+
+        // Step 3. build symbol table
+
+        auto symtab = BuildSymTable(elves);
+
+        // Step 4. GC
+        // TODO
+
+        // Step 5. finish layout
+        FinalizeLayout(layout, elves);
+
+        // Step 6. relocate
+        RelocateSections(elves, layout, symtab);
+
+        // Step 7. output
+        Output(stdout, elves, symtab, layout);
     }
-    catch (const std::exception & e)
+    catch (std::exception const & e)
     {
-        std::cerr << "[lyn] ERROR: " << e.what() << std::endl;
+        auto message = fmt::format("lyn error: {0}", e.what());
+        std::fprintf(stderr, "%s\n", message.c_str());
+
         return 1;
     }
 

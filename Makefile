@@ -10,13 +10,12 @@ SOURCES := \
   3rdparty/fmt/src/format.cc \
   natelf/natelf.cc \
   natelf/arm32.cc \
-  core/data_chunk.cc \
-  core/data_file.cc \
-  ea/event_section.cc \
-  ea/event_code.cc \
-  core/section_data.cc \
-  core/event_object.cc \
-  core/arm_relocator.cc \
+  lynelf.cc \
+  layout.cc \
+  symtab.cc \
+  relocation.cc \
+  event_helpers.cc \
+  output.cc \
   main.cc
 
 BUILD_DIR := build
