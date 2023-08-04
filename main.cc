@@ -57,10 +57,10 @@ int main(int argc, char const * argv[])
 
         if (arg_view[0] == '-')
         {
+            // TODO: other parameters
         }
         else
         {
-            std::fprintf(stderr, "ELF: %s\n", argv[i]);
             elf_paths.push_back(arg_view);
         }
     }
@@ -74,6 +74,7 @@ int main(int argc, char const * argv[])
         // - build global symtab
         // - gc
         // - finish layout (precise offsets)
+        // - populate symtab with addresses
         // - relocate
         // - output event
 
@@ -127,6 +128,7 @@ int main(int argc, char const * argv[])
 
         // Step 5. finish layout
         FinalizeLayout(layout, elves);
+        LayoutSymbols(symtab, elves, layout);
 
         // Step 6. relocate
         RelocateSections(elves, layout, symtab);

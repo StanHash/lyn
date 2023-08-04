@@ -2,7 +2,7 @@
 
 `lyn` is being rewritten. The rewritten lyn will be lyn 3.x.
 
-`lyn` translates relocatable ARM ELF objects into a sequence of Event Assembler commands, allowing it to work as a basic but proper linker. `lyn` output is currently tailored for ColorzCore.
+`lyn` translates relocatable ARM ELF objects into a sequence of Event Assembler commands, allowing it to work as a basic but proper linker. `lyn` output is tailored for ColorzCore.
 
 The name of this tool is "lyn" and is not intended to be capitalized.
 
@@ -13,6 +13,7 @@ The name of this tool is "lyn" and is not intended to be capitalized.
 - basic section outputting (symbols, data, relocations).
 - auto-generating hooks for jumping to replacement functions.
 - the ability to transform relative calls (BLs) into long calls via generated veneers.
+- link against a reference without outputting symbols from that reference.
 
 ### New
 

@@ -6,6 +6,7 @@
 
 #include "address.hh"
 #include "lynelf.hh"
+#include "symtab.hh"
 
 struct LynSec
 {
@@ -21,5 +22,7 @@ PrepareLayout(std::vector<LynElf> & elves, std::unordered_map<std::string_view, 
 
 // generates offsets for floating sections
 void FinalizeLayout(std::vector<LynSec> & layout, std::vector<LynElf> const & elves);
+
+void LayoutSymbols(std::vector<LynSym> & symtab, std::vector<LynElf> const & elves, std::vector<LynSec> const & layout);
 
 #endif // LYN_LAYOUT_HH

@@ -7,8 +7,26 @@
 
 using namespace natelf;
 
+static std::string_view FixDisplayName(std::string_view const & display_name)
+{
+    // remove leading dir names here
+    // in case people inadvertedly share lyn output while using absolute paths that feature their real names or sth.
+    // 7743 once said that it had been an issue in the past.
+
+    auto sep = display_name.rfind('/');
+
+    // Windows gets to have their very own special case.
+    auto win_sep = display_name.rfind('\\');
+    sep = sep != std::string_view::npos ? sep : win_sep;
+
+    if (sep == std::string_view::npos)
+        return display_name;
+
+    return display_name.substr(sep + 1);
+}
+
 LynElf::LynElf(std::string_view const & display_name, std::span<std::uint8_t> const & raw_elf_view)
-    : display_name(std::move(display_name)), raw_elf_view(raw_elf_view)
+    : display_name(FixDisplayName(display_name)), raw_elf_view(raw_elf_view)
 {
     ref_ehdr = ElfPtr<Elf32_Ehdr>(raw_elf_view);
 

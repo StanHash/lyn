@@ -76,59 +76,54 @@ void Output(
 
                 auto & lyn_sym = symtab[reloc.lyn_sym];
 
-                if (lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
+                // TODO: for some reasone this includes locals
+                if (lyn_sym.scope == SymScope::GLOBAL && lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
                 {
                     // this makes it easy and fast
                     target_expr = lyn_sym.name_ref;
                 }
                 else
                 {
-                    // TODO: we should probably give symbols anchored values to make this easier
-
-                    auto & elf = elves[lyn_sym.elf_idx];
-                    auto & sec = elf.secs[lyn_sym.sec_idx];
-                    auto elf_sym = natelf::ElfPtr<natelf::Elf32_Sym>(sec.Entry(lyn_sym.sym_idx));
-
-                    if (elf_sym->IsDefined() && elf_sym->st_shndx < elf.secs.size())
+                    if (lyn_sym.address == std::nullopt)
                     {
-                        if (!elf.secs[elf_sym->st_shndx].lyn_sec)
-                        {
-                            throw std::runtime_error("(lyn internal error) relocating to symbol in discarded section.");
-                        }
+                        throw std::runtime_error("undefined symbol with no name");
+                    }
 
-                        auto & target_lyn_sec = layout[*elf.secs[elf_sym->st_shndx].lyn_sec];
+                    auto & sym_addr = *lyn_sym.address;
+                    addend += sym_addr.offset;
 
-                        auto anchor = target_lyn_sec.address.anchor;
-                        auto offset = target_lyn_sec.address.offset + elf_sym->st_value;
-
-                        if (anchor == lyn_sec.address.anchor)
-                        {
-                            target_expr = "CURRENTOFFSET";
-                            currentoffset_anchor = true;
-                            addend += offset;
-                            addend -= rom_float_offset;
-                        }
-                        else
-                        {
-                            throw std::runtime_error("UNIMPLEMENTED");
-                        }
+                    if (sym_addr.anchor == lyn_sec.address.anchor)
+                    {
+                        target_expr = "CURRENTOFFSET";
+                        currentoffset_anchor = true;
+                        addend -= rom_float_offset + reloc.offset;
                     }
                     else
                     {
-                        throw std::runtime_error("(malformed elf) undefined symbol with no name");
+                        switch (sym_addr.anchor)
+                        {
+                            case LynAnchor::ABSOLUTE:
+                                target_expr = "";
+                                break;
+
+                            default:
+                                throw std::runtime_error("UNIMPLEMENTED");
+                        }
                     }
                 }
 
                 bool is_complex_expr = false;
 
-                if (reloc_info.is_relative)
-                {
-                    target_expr = fmt::format("{0}-CURRENTOFFSET", std::move(target_expr));
-                    currentoffset_anchor = true;
-                    is_complex_expr = true;
-                }
+                // add addend expr
 
-                if (addend > 0)
+                if (target_expr.empty())
+                {
+                    if (addend < 0x10)
+                        target_expr = fmt::format("{0}", addend);
+                    else
+                        target_expr = fmt::format("${0:X}", addend);
+                }
+                else if (addend > 0)
                 {
                     target_expr = fmt::format("{0}+{1}", std::move(target_expr), +addend);
                     is_complex_expr = true;
@@ -136,6 +131,15 @@ void Output(
                 else if (addend < 0)
                 {
                     target_expr = fmt::format("{0}-{1}", std::move(target_expr), -addend);
+                    is_complex_expr = true;
+                }
+
+                // add relative expr
+
+                if (reloc_info.is_relative)
+                {
+                    target_expr = fmt::format("{0}-CURRENTOFFSET", std::move(target_expr));
+                    currentoffset_anchor = true;
                     is_complex_expr = true;
                 }
 
@@ -231,8 +235,9 @@ void Output(
         event_block.PackCodes();
         event_block.Optimize();
 
-        /*
+        // TODO: symbols
 
+#if 0
         if (std::any_of(
                 section.symbols().begin(), section.symbols().end(),
                 [](const section_data::symbol & sym) { return !sym.isLocal; }))
@@ -283,20 +288,12 @@ void Output(
         {
             events.write_to_stream(output, section);
         }
-
-        */
+#endif
 
         std::string display_sec_name = fmt::format("{0}({1})", sec.ref_name, elf.display_name);
 
         if (lyn_sec.address.anchor == LynAnchor::FLOAT_ROM)
         {
-            if (print_info_comments)
-                fprintf(ref_file, "// %s\n", display_sec_name.c_str());
-
-            event_block.WriteToStream(ref_file, data);
-
-            rom_float_offset += data.size();
-
             // TODO: could we align less if we need align less?
 
             std::uint32_t misalign = (rom_float_offset % 4);
@@ -306,6 +303,13 @@ void Output(
                 fprintf(ref_file, "ALIGN 4\n");
                 rom_float_offset += (4 - misalign);
             }
+
+            if (print_info_comments)
+                fprintf(ref_file, "// %s\n", display_sec_name.c_str());
+
+            event_block.WriteToStream(ref_file, data);
+
+            rom_float_offset += data.size();
         }
         else if (lyn_sec.address.anchor == LynAnchor::ABSOLUTE)
         {

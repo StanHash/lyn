@@ -18,6 +18,9 @@ SOURCES := \
   output.cc \
   main.cc
 
+TESTS := \
+  test_relocation
+
 BUILD_DIR := build
 
 CXXFLAGS += -g -Wall -Wextra -Wno-unused -std=c++20 -Og \
@@ -32,16 +35,24 @@ CXX ?= g++
 OBJECTS := $(SOURCES:%.cc=$(BUILD_DIR)/%.o)
 DEPENDS := $(SOURCES:%.cc=$(BUILD_DIR)/%.d)
 
+TEST_EXES := $(TESTS:%=$(BUILD_DIR)/%)
+
 all: $(TARGET)
+
+tests: $(TEST_EXES)
 
 clean:
 	rm -rf $(BUILD_DIR)/
 	rm -f $(TARGET)
 
-.PHONY: all clean
+.PHONY: all tests clean
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS)
+
+$(TEST_EXES): $(BUILD_DIR)/%: tests/unit/%.cc $(filter-out %/main.o,$(OBJECTS))
+	$(CXX) $(CXXFLAGS) -o $@ $^
+	$@ || (rm -f $@ && false)
 
 $(OBJECTS): $(BUILD_DIR)/%.o: %.cc
 	@mkdir -p $(dir $@)

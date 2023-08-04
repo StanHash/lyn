@@ -81,3 +81,42 @@ void FinalizeLayout(std::vector<LynSec> & layout, std::vector<LynElf> const & el
         }
     }
 }
+
+void LayoutSymbols(std::vector<LynSym> & symtab, std::vector<LynElf> const & elves, std::vector<LynSec> const & layout)
+{
+    for (unsigned int i = 0; i < symtab.size(); i++)
+    {
+        auto & sym = symtab[i];
+        auto & elf = elves[sym.elf_idx];
+        auto & sec = elf.secs[sym.sec_idx];
+
+        auto elf_sym = ElfPtr<Elf32_Sym>(sec.Entry(sym.sym_idx));
+
+        switch (elf_sym->st_shndx)
+        {
+            case SHN_UNDEF:
+                continue;
+
+            case SHN_COMMON:
+                continue;
+
+            case SHN_ABS:
+                sym.address = { LynAddress(LynAnchor::ABSOLUTE, elf_sym->st_value) };
+                break;
+
+            default:
+                if (elf_sym->st_shndx < elf.secs.size())
+                {
+                    auto & data_sec = elf.secs[elf_sym->st_shndx];
+
+                    if (data_sec.lyn_sec)
+                    {
+                        auto & sec_addr = layout[*data_sec.lyn_sec].address;
+                        sym.address = { sec_addr.Offset(elf_sym->st_value) };
+                    }
+                }
+
+                break;
+        }
+    }
+}

@@ -1,13 +1,15 @@
 #ifndef LYN_RELOCATION_HH
 #define LYN_RELOCATION_HH
 
-#include "layout.hh"
-#include "lynelf.hh"
-#include "symtab.hh"
+#include <climits>
 
 #include <bit>
 #include <span>
 #include <vector>
+
+#include "layout.hh"
+#include "lynelf.hh"
+#include "symtab.hh"
 
 struct RelocationPart
 {
@@ -20,7 +22,12 @@ struct RelocationPart
     constexpr T GetMask() const
         requires std::is_integral_v<T>
     {
-        return ((static_cast<T>(1) << bit_size) - 1) << bit_offset;
+        // this won't work when bit_size >= sizeof(T) * 8
+        // for example, T is std::uint32_t and bit_size is 32
+        // return ((static_cast<T>(1) << bit_size) - 1) << bit_offset;
+
+        using ut = std::make_unsigned_t<T>;
+        return (static_cast<ut>(-1) >> ((sizeof(ut) * CHAR_BIT) - bit_size)) << bit_offset;
     }
 
     constexpr int GetEffectiveShift() const

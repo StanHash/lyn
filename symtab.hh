@@ -2,8 +2,11 @@
 #define LYN_SYMTAB_HH
 
 #include <cstddef>
+
+#include <optional>
 #include <vector>
 
+#include "address.hh"
 #include "lynelf.hh"
 
 enum struct SymScope
@@ -12,6 +15,7 @@ enum struct SymScope
     GLOBAL,
     UNDEFINED,
     REFERENCE,
+    DISCARDED,
 };
 
 struct LynSym
@@ -21,6 +25,7 @@ struct LynSym
     std::uint32_t sym_idx;
     char const * name_ref;
     SymScope scope;
+    std::optional<LynAddress> address;
 };
 
 // builds a shared sym table that lists each local sym, merging where necessary.

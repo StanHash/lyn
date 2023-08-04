@@ -211,8 +211,6 @@ static void ApplyRelocations(
         auto lyn_sym_idx = sym_indirection[elf_rel->GetSym()];
         auto & sym = symtab[lyn_sym_idx];
 
-        auto elf_sym = ElfPtr<Elf32_Sym>(elves[sym.elf_idx].secs[sym.sec_idx].Entry(sym.sym_idx));
-
         auto rel_type = elf_rel->GetType();
         auto & rel_info = GetArm32RelocationInfo(rel_type);
 
@@ -220,72 +218,36 @@ static void ApplyRelocations(
 
         std::int32_t const addend = elf_rel->GetAddend() + rel_info.Extract(data);
 
-        LynAddress target_address = { LynAnchor::ABSOLUTE, 0u };
-
-        switch (elf_sym->st_shndx)
+        if (sym.address != std::nullopt)
         {
-            case SHN_ABS:
-                target_address = { LynAnchor::ABSOLUTE, elf_sym->st_value };
-                break;
+            auto & target = *sym.address;
 
-            case SHN_UNDEF:
-                // we cannot relocate to undefined things
+            if (!rel_info.is_relative && target.anchor == LynAnchor::ABSOLUTE)
+            {
+                // absolute reloc with absolute target
 
-                // encode addend and add reloc to pending
-                rel_info.Inject(data, addend);
-                sec.pending_relocs.emplace_back(elf_rel->r_offset, rel_type, lyn_sym_idx);
+                std::int32_t const value = target.offset + addend;
+                rel_info.Inject(data, value);
 
                 continue;
+            }
+            else if (rel_info.is_relative && target.anchor == sec_addr.anchor)
+            {
+                // relative relocs with target of same anchor, we know the distance
 
-            case SHN_COMMON:
-                // we cannot relocate to COMMON
-                // TODO: handle COMMON
-                throw std::runtime_error("Relocation to COMMON symbol");
+                std::int32_t const rel_offset = sec_addr.offset + elf_rel->r_offset;
+                std::int32_t const value = target.offset + addend - rel_offset;
+                rel_info.Inject(data, value);
 
-            default:
-                auto & target_elf = elves[sym.elf_idx];
-
-                if (elf_sym->st_shndx >= target_elf.secs.size())
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Malformed ELF ({0}): symbol defined for SHDR out of bounds", target_elf.display_name));
-                }
-
-                auto & target_sec = target_elf.secs[elf_sym->st_shndx];
-
-                if (target_sec.lyn_sec == std::nullopt)
-                    throw std::runtime_error("(internal error) relocating to discarded symbol");
-
-                auto & target_lyn_sec_addr = layout[*target_sec.lyn_sec].address;
-                target_address.anchor = target_lyn_sec_addr.anchor;
-                target_address.offset = target_lyn_sec_addr.offset + elf_sym->st_value;
-
-                break;
+                continue;
+            }
         }
 
-        if (!rel_info.is_relative && target_address.anchor == LynAnchor::ABSOLUTE)
-        {
-            // absolute reloc with absolute target
+        // if we get here, we failed to relocate
+        // encode addend and add reloc to pending
 
-            std::int32_t const value = target_address.offset + addend;
-            rel_info.Inject(data, value);
-        }
-        else if (rel_info.is_relative && target_address.anchor == sec_addr.anchor)
-        {
-            // relative relocs with target of same anchor, we know the distance
-
-            std::int32_t const rel_offset = sec_addr.offset + elf_rel->r_offset;
-            std::int32_t const value = target_address.offset + addend - rel_offset;
-            rel_info.Inject(data, value);
-        }
-        else
-        {
-            // unknown distance or absolute value
-
-            // encode addend and add reloc to pending
-            rel_info.Inject(data, addend);
-            sec.pending_relocs.emplace_back(elf_rel->r_offset, rel_type, lyn_sym_idx);
-        }
+        rel_info.Inject(data, addend);
+        sec.pending_relocs.emplace_back(elf_rel->r_offset, rel_type, lyn_sym_idx);
     }
 
     std::sort(sec.pending_relocs.begin(), sec.pending_relocs.end());
