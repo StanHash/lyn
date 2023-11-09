@@ -95,7 +95,7 @@ int main(int argc, char const * argv[])
 
             LynElf lyn_elf(path, raw_elf);
 
-            if (lyn_elf.IsImplicitReference())
+            if (!reference_elf && lyn_elf.IsImplicitReference())
             {
                 // TODO: warn about implicit references
                 std::fprintf(stderr, "REF: %s\n", path.data());

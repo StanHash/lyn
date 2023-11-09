@@ -13,6 +13,8 @@ struct LynSec
     LynAddress address;
     std::uint32_t elf_idx;
     std::uint32_t sec_idx;
+
+    std::string GetDisplayName(std::vector<LynElf> const & elves) const;
 };
 
 // prepare a the layed out LynSec list. Floating sections aren't layed out yet.

@@ -14,8 +14,6 @@ enum struct SymScope
     LOCAL,
     GLOBAL,
     UNDEFINED,
-    REFERENCE,
-    DISCARDED,
 };
 
 struct LynSym

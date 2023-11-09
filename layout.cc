@@ -8,6 +8,14 @@
 
 using namespace natelf;
 
+std::string LynSec::GetDisplayName(std::vector<LynElf> const & elves) const
+{
+    auto & elf = elves[elf_idx];
+    auto & sec = elf.secs[sec_idx];
+
+    return fmt::format("{0}({1})", sec.ref_name, elf.display_name);
+}
+
 std::vector<LynSec>
 PrepareLayout(std::vector<LynElf> & elves, std::unordered_map<std::string_view, std::uint32_t> const & reference)
 {
@@ -30,7 +38,7 @@ PrepareLayout(std::vector<LynElf> & elves, std::unordered_map<std::string_view, 
             if ((flags & SHF_ALLOC) != 0)
             {
                 auto anchor = LynAnchor::FLOAT_ROM;
-                auto offset = 0u;
+                auto offset = 0;
 
                 if ((flags & SHF_WRITE) != 0)
                 {
@@ -59,7 +67,7 @@ PrepareLayout(std::vector<LynElf> & elves, std::unordered_map<std::string_view, 
 
 void FinalizeLayout(std::vector<LynSec> & layout, std::vector<LynElf> const & elves)
 {
-    std::uint32_t float_rom_offset = 0u;
+    std::int32_t float_rom_offset = 0u;
 
     for (auto & lyn_sec : layout)
     {

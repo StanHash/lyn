@@ -14,13 +14,13 @@ enum struct LynAnchor
 struct LynAddress
 {
     LynAnchor anchor;
-    std::uint32_t offset;
+    std::int32_t offset;
 
     constexpr LynAddress() : anchor(LynAnchor::ABSOLUTE), offset(0)
     {
     }
 
-    constexpr LynAddress(LynAnchor anchor, std::uint32_t offset) : anchor(anchor), offset(offset)
+    constexpr LynAddress(LynAnchor anchor, std::int32_t offset) : anchor(anchor), offset(offset)
     {
     }
 

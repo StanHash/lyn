@@ -23,7 +23,7 @@ TESTS := \
 
 BUILD_DIR := build
 
-CXXFLAGS += -g -Wall -Wextra -Wno-unused -std=c++20 -Og \
+CXXFLAGS += -g -Wall -Wextra -Wno-unused -std=c++20 -O2 \
   -I 3rdparty/fmt/include -iquote .
 
 CXX ?= g++

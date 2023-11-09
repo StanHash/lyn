@@ -31,21 +31,183 @@ static EventCode::Kind EventCodeKindFromReloc(RelocationInfo const & info)
     }
 }
 
+void OutputSymbols(std::FILE * ref_file, std::vector<LynSym> const & symtab, bool print_info_comments)
+{
+    std::vector<std::reference_wrapper<LynSym const>> float_rom_syms;
+    std::vector<std::reference_wrapper<LynSym const>> absolute_syms;
+
+    for (auto & lyn_sym : symtab)
+    {
+        if (!lyn_sym.address || lyn_sym.scope != SymScope::GLOBAL || lyn_sym.name_ref == nullptr ||
+            lyn_sym.name_ref[0] == '\0')
+            continue;
+
+        switch (lyn_sym.address->anchor)
+        {
+            case LynAnchor::FLOAT_ROM:
+                float_rom_syms.push_back(std::ref(lyn_sym));
+                break;
+
+            case LynAnchor::ABSOLUTE:
+                absolute_syms.push_back(std::ref(lyn_sym));
+                break;
+        }
+    }
+
+    std::sort(
+        float_rom_syms.begin(), float_rom_syms.end(),
+        [](auto & a, auto & b) { return a.get().address->offset < b.get().address->offset; });
+
+    std::int32_t rom_float_offset = 0;
+    bool pushed_for_symbols = false;
+
+    for (auto lyn_sym_ref : float_rom_syms)
+    {
+        auto & lyn_sym = lyn_sym_ref.get();
+
+        if (!pushed_for_symbols)
+        {
+            std::fprintf(ref_file, "PUSH\n");
+            pushed_for_symbols = true;
+
+            if (print_info_comments)
+                std::fprintf(ref_file, "// Symbols\n");
+        }
+
+        auto & lyn_addr = *lyn_sym.address;
+
+        int diff = lyn_addr.offset - rom_float_offset;
+
+        if (diff > 0)
+            fmt::print("ORG CURRENTOFFSET+{0} ; ", diff);
+
+        rom_float_offset = lyn_addr.offset;
+
+        fmt::println("{0}:", lyn_sym.name_ref);
+    }
+
+    for (auto lyn_sym_ref : absolute_syms)
+    {
+        auto & lyn_sym = lyn_sym_ref.get();
+
+        if (!pushed_for_symbols)
+        {
+            std::fprintf(ref_file, "PUSH\n");
+            pushed_for_symbols = true;
+
+            if (print_info_comments)
+                std::fprintf(ref_file, "// Symbols\n");
+        }
+
+        auto & lyn_addr = *lyn_sym.address;
+
+        if (lyn_addr.offset < 0x08000000 || lyn_addr.offset > 0x09FFFFFF)
+        {
+            // output #define for absolute symbols we not in ROM
+            fmt::println("#define {0} 0x{1:08X}", lyn_sym.name_ref, (std::uint32_t)lyn_addr.offset);
+        }
+        else
+        {
+            fmt::println("ORG 0x{0:06X} ; {1}:", lyn_addr.offset - 0x08000000, lyn_sym.name_ref);
+        }
+    }
+
+    if (pushed_for_symbols)
+    {
+        std::fprintf(ref_file, "POP\n");
+        pushed_for_symbols = false;
+    }
+}
+
+void OutputSymbols2(std::FILE * ref_file, std::vector<LynSym> const & symtab, bool print_info_comments)
+{
+    int rom_float_offset = 0;
+    bool pushed_for_symbols = false;
+
+    // output float rom symbols
+
+    for (auto & lyn_sym : symtab)
+    {
+        if (!lyn_sym.address || lyn_sym.address->anchor != LynAnchor::FLOAT_ROM)
+            continue;
+
+        if (lyn_sym.scope == SymScope::GLOBAL && lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
+        {
+            if (!pushed_for_symbols)
+            {
+                std::fprintf(ref_file, "PUSH\n");
+                pushed_for_symbols = true;
+
+                if (print_info_comments)
+                    std::fprintf(ref_file, "// Symbols\n");
+            }
+
+            auto & lyn_addr = *lyn_sym.address;
+
+            // stan from 3 months ago you moron use signed int on things you do math on please thank
+            int diff = ((int)lyn_addr.offset) - rom_float_offset;
+
+            if (diff > 0)
+            {
+                fmt::print("ORG CURRENTOFFSET+{0} ; ", diff);
+            }
+            else
+            {
+                fmt::print("ORG CURRENTOFFSET-{0} ; ", -diff);
+            }
+
+            rom_float_offset = lyn_addr.offset;
+
+            fmt::println("{0}:", lyn_sym.name_ref);
+        }
+    }
+
+    // output abs symbols
+
+    for (auto & lyn_sym : symtab)
+    {
+        if (!lyn_sym.address || lyn_sym.address->anchor != LynAnchor::ABSOLUTE)
+            continue;
+
+        if (lyn_sym.scope == SymScope::GLOBAL && lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
+        {
+            if (!pushed_for_symbols)
+            {
+                std::fprintf(ref_file, "PUSH\n");
+                pushed_for_symbols = true;
+
+                if (print_info_comments)
+                    std::fprintf(ref_file, "// Symbols\n");
+            }
+
+            auto & lyn_addr = *lyn_sym.address;
+
+            if (lyn_addr.offset < 0x08000000 || lyn_addr.offset >= 0x0A000000)
+            {
+                // output #define for absolute symbols we don't have anything else for
+                fmt::println("#define {0} 0x{1:08X}", lyn_sym.name_ref, (std::uint32_t)lyn_addr.offset);
+            }
+            else
+            {
+                fmt::println("ORG 0x{0:06X} ; {1}:", lyn_addr.offset - 0x08000000, lyn_sym.name_ref);
+            }
+        }
+    }
+
+    if (pushed_for_symbols)
+    {
+        std::fprintf(ref_file, "POP\n");
+        pushed_for_symbols = false;
+    }
+}
+
 void Output(
     std::FILE * ref_file, std::vector<LynElf> const & elves, std::vector<LynSym> const & symtab,
     std::vector<LynSec> const & layout)
 {
-    std::uint32_t rom_float_offset = 0;
-
     // these should be inputs:
     std::optional<std::string> float_rom_anchor_name;
     bool print_info_comments = true;
-
-    if (layout.size() == 0)
-    {
-        // TODO: warning, empty output
-        return;
-    }
 
     std::fprintf(ref_file, "ALIGN 4\n");
 
@@ -53,6 +215,10 @@ void Output(
     {
         fmt::println(ref_file, "{0}:", *float_rom_anchor_name);
     }
+
+    OutputSymbols(ref_file, symtab, print_info_comments);
+
+    std::uint32_t rom_float_offset = 0;
 
     for (auto & lyn_sec : layout)
     {
@@ -76,8 +242,8 @@ void Output(
 
                 auto & lyn_sym = symtab[reloc.lyn_sym];
 
-                // TODO: for some reasone this includes locals
-                if (lyn_sym.scope == SymScope::GLOBAL && lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
+                // TODO: for some reason this includes locals
+                if (lyn_sym.scope != SymScope::LOCAL && lyn_sym.name_ref != nullptr && lyn_sym.name_ref[0] != '\0')
                 {
                     // this makes it easy and fast
                     target_expr = lyn_sym.name_ref;
@@ -235,77 +401,22 @@ void Output(
         event_block.PackCodes();
         event_block.Optimize();
 
-        // TODO: symbols
-
-#if 0
-        if (std::any_of(
-                section.symbols().begin(), section.symbols().end(),
-                [](const section_data::symbol & sym) { return !sym.isLocal; }))
-        {
-            output << "PUSH" << std::endl;
-            int currentOffset = 0;
-
-            for (auto & symbol : section.symbols())
-            {
-                if (symbol.isLocal)
-                    continue;
-
-                output << "ORG CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << ";" << symbol.name
-                       << ":" << std::endl;
-                currentOffset = symbol.offset;
-            }
-
-            output << "POP" << std::endl;
-        }
-
-        if (std::any_of(
-                section.symbols().begin(), section.symbols().end(),
-
-                [](const section_data::symbol & sym) { return sym.isLocal; }))
-        {
-            output << "{" << std::endl;
-            output << "PUSH" << std::endl;
-
-            int currentOffset = 0;
-
-            for (auto & symbol : section.symbols())
-            {
-                if (!symbol.isLocal)
-                    continue;
-
-                output << "ORG CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << ";" << symbol.name
-                       << ":" << std::endl;
-                currentOffset = symbol.offset;
-            }
-
-            output << "POP" << std::endl;
-
-            events.write_to_stream(output, section);
-
-            output << "}" << std::endl;
-        }
-        else
-        {
-            events.write_to_stream(output, section);
-        }
-#endif
-
-        std::string display_sec_name = fmt::format("{0}({1})", sec.ref_name, elf.display_name);
+        std::string display_sec_name = lyn_sec.GetDisplayName(elves);
 
         if (lyn_sec.address.anchor == LynAnchor::FLOAT_ROM)
         {
-            // TODO: could we align less if we need align less?
+            constexpr std::uint32_t align = 4;
 
-            std::uint32_t misalign = (rom_float_offset % 4);
+            std::uint32_t misalign = (rom_float_offset % align);
 
             if (misalign != 0)
             {
-                fprintf(ref_file, "ALIGN 4\n");
-                rom_float_offset += (4 - misalign);
+                fmt::println(ref_file, "ALIGN {0}", align);
+                rom_float_offset += (align - misalign);
             }
 
             if (print_info_comments)
-                fprintf(ref_file, "// %s\n", display_sec_name.c_str());
+                fmt::println(ref_file, "// Section: {0}", display_sec_name.c_str());
 
             event_block.WriteToStream(ref_file, data);
 
@@ -320,10 +431,9 @@ void Output(
                 // ROM ADDR
 
                 if (print_info_comments)
-                    std::fprintf(ref_file, "// %s\n", display_sec_name.c_str());
+                    fmt::println(ref_file, "// {0}", display_sec_name.c_str());
 
                 std::fprintf(ref_file, "PUSH\nORG 0x%06X\n", (addr & 0x1FFFFFF));
-                // TODO: write symbols here
                 event_block.WriteToStream(ref_file, data);
                 std::fprintf(ref_file, "POP\n");
             }
