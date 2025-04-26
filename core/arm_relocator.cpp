@@ -153,7 +153,7 @@ struct arm_thumb_bl_reloc : public arm_relocator::relocatelet {
 
 struct arm_arm_b_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string &sym, int addend) const {
-		std::string value = arm_relocator::pcrel_reloc_string(sym, addend);
+		std::string value = arm_relocator::pcrel_arm_reloc_string(sym, addend);
 
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
