@@ -92,14 +92,12 @@ void event_object::append_from_elf(const char* fileName)
 
 			section.set_name(elfFile.section_name(i));
 
-			section.clear();
-			section.reserve(loc.data_size);
+			section.resize(loc.data_size);
 
 			std::copy(
 				std::next(file.begin(), loc.file_offset),
 				std::next(file.begin(), loc.file_offset+loc.data_size),
-				std::back_inserter(section)
-			);
+				section.begin());
 
 			outMap[i] = true;
 		}
@@ -133,8 +131,13 @@ void event_object::append_from_elf(const char* fileName)
 						? getLocalSymbolName(si, i)
 						: getGlobalSymbolName(readString(nameShdr, sym.get_st_name()).c_str());
 
+					bool is_function = sym.get_st_type() == elfcpp::STT_FUNC;
+
 					mAbsoluteSymbols.push_back(section_data::symbol {
-						name, sym.get_st_value(), false
+						name,
+						sym.get_st_value(),
+						false,
+						is_function,
 					});
 
 					break;
@@ -158,19 +161,19 @@ void event_object::append_from_elf(const char* fileName)
 
 						if ((name == "$t") || (subString == "$t."))
 						{
-							section.set_mapping(sym.get_st_value(), section_data::mapping::Thumb);
+							// section.set_mapping(sym.get_st_value(), section_data::mapping::Thumb);
 							break;
 						}
 
 						if ((name == "$a") || (subString == "$a."))
 						{
-							section.set_mapping(sym.get_st_value(), section_data::mapping::ARM);
+							// section.set_mapping(sym.get_st_value(), section_data::mapping::ARM);
 							break;
 						}
 
 						if ((name == "$d") || (subString == "$d."))
 						{
-							section.set_mapping(sym.get_st_value(), section_data::mapping::Data);
+							// section.set_mapping(sym.get_st_value(), section_data::mapping::Data);
 							break;
 						}
 					}
@@ -180,10 +183,14 @@ void event_object::append_from_elf(const char* fileName)
 					else
 						name = getGlobalSymbolName(name.c_str());
 
+					bool is_local = sym.get_st_bind() == elfcpp::STB_LOCAL;
+					bool is_function = sym.get_st_type() == elfcpp::STT_FUNC;
+
 					section.symbols().push_back(section_data::symbol {
 						name,
 						sym.get_st_value(),
-						(sym.get_st_bind() == elfcpp::STB_LOCAL)
+						is_local,
+						is_function,
 					});
 
 					break;
@@ -429,7 +436,7 @@ void event_object::remove_unnecessary_symbols() {
 				section.symbols().begin(),
 				section.symbols().end(),
 				[this] (const section_data::symbol& symbol) -> bool {
-					if (!symbol.isLocal)
+					if (!symbol.is_local)
 						return false; // symbol may be used outside of the scope of this object
 
 					for (auto& section : mSections)
@@ -464,7 +471,7 @@ std::vector<event_object::hook> event_object::get_hooks() const {
 
 	for (auto& section : mSections) {
 		for (auto& locSymbol : section.symbols()) {
-			if (!locSymbol.isLocal && !locSymbol.name.empty()) {
+			if (!locSymbol.is_local && !locSymbol.name.empty()) {
 				std::string_view name(locSymbol.name);
 				symbol_names.insert(name);
 			}
@@ -472,10 +479,21 @@ std::vector<event_object::hook> event_object::get_hooks() const {
 	}
 
 	for (auto& absSymbol : mAbsoluteSymbols) {
-		if (absSymbol.offset < 0x08000000 || absSymbol.offset >= 0x0A000000)
-			continue; // Not in ROM
-
 		if (symbol_names.contains(std::string_view(absSymbol.name))) {
+			if (absSymbol.offset < 0x08000000 || absSymbol.offset >= 0x0A000000) {
+				std::string message(std::format("attempting to replace `{0}`, which is not in ROM (reference address: 0x{1:08X})",
+					absSymbol.name, absSymbol.offset));
+
+				throw std::runtime_error(message);
+			}
+
+			if (!absSymbol.is_function) {
+				std::string message(std::format("attempting to replace `{0}`, which is not a function",
+					absSymbol.name));
+
+				throw std::runtime_error(message);
+			}
+
 			result.push_back({ (absSymbol.offset - 0x08000000), absSymbol.name });
 		}
 	}
@@ -497,14 +515,14 @@ void event_object::write_events(std::ostream& output) const {
 			section.symbols().end(),
 
 			[] (const section_data::symbol& sym) {
-				return !sym.isLocal;
+				return !sym.is_local;
 			}
 		)) {
 			output << "PUSH" << std::endl;
 			int currentOffset = 0;
 
 			for (auto& symbol : section.symbols()) {
-				if (symbol.isLocal)
+				if (symbol.is_local)
 					continue;
 
 				output << "ORG CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << ";"
@@ -515,12 +533,13 @@ void event_object::write_events(std::ostream& output) const {
 			output << "POP" << std::endl;
 		}
 
+		// TODO: this should never be true?
 		if (std::any_of(
 			section.symbols().begin(),
 			section.symbols().end(),
 
 			[] (const section_data::symbol& sym) {
-				return sym.isLocal;
+				return sym.is_local;
 			}
 		)) {
 			output << "{" << std::endl;
@@ -529,7 +548,7 @@ void event_object::write_events(std::ostream& output) const {
 			int currentOffset = 0;
 
 			for (auto& symbol : section.symbols()) {
-				if (!symbol.isLocal)
+				if (!symbol.is_local)
 					continue;
 
 				output << "ORG CURRENTOFFSET+$" << std::hex << (symbol.offset - currentOffset) << ";"

@@ -22,7 +22,8 @@ struct section_data : public data_chunk {
 	struct symbol {
 		std::string name;
 		unsigned int offset;
-		bool isLocal;
+		bool is_local : 1;
+		bool is_function : 1;
 	};
 
 	struct relocation {
