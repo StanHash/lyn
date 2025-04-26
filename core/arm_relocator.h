@@ -3,7 +3,7 @@
 
 #include "section_data.h"
 
-#include "../ea/event_section.h"
+#include "../ea/event_code.h"
 
 #include <memory>
 #include <map>

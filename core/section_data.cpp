@@ -1,8 +1,5 @@
 #include "section_data.h"
 
-#include "../ea/event_section.h"
-#include "util/hex_write.h"
-
 #include <algorithm>
 
 namespace lyn {

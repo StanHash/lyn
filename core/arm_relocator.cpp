@@ -1,8 +1,6 @@
 #include "arm_relocator.h"
 
-#include <algorithm>
-
-#include "util/hex_write.h"
+#include <format>
 
 #include "elfcpp/elfcpp.h"
 #include "elfcpp/arm.h"
@@ -13,9 +11,7 @@ struct arm_data_abs32_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_POIN,
-			arm_relocator::abs_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
-			false
-		);
+			arm_relocator::abs_reloc_string(sym, data.read<std::uint32_t>(offset) + addend));
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -27,9 +23,7 @@ struct arm_data_rel32_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string &sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
-			arm_relocator::rel_reloc_string(sym, data.read<std::uint32_t>(offset) + addend),
-			false
-		);
+			arm_relocator::rel_reloc_string(sym, data.read<std::uint32_t>(offset) + addend));
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -41,9 +35,7 @@ struct arm_data_abs16_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_SHORT,
-			arm_relocator::abs_reloc_string(sym, data.read<std::uint16_t>(offset) + addend),
-			false
-		);
+			arm_relocator::abs_reloc_string(sym, data.read<std::uint16_t>(offset) + addend));
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -55,9 +47,7 @@ struct arm_data_abs8_reloc : public arm_relocator::relocatelet {
 	event_code make_event_code(const section_data& data, unsigned int offset, const std::string& sym, int addend) const {
 		return lyn::event_code(
 			lyn::event_code::CODE_BYTE,
-			arm_relocator::abs_reloc_string(sym, data.read_byte(offset) + addend),
-			false
-		);
+			arm_relocator::abs_reloc_string(sym, data.read_byte(offset) + addend));
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -71,7 +61,7 @@ struct arm_thumb_b_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::b_string(value)
-		}, false);
+		});
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -99,7 +89,7 @@ struct arm_thumb_bcond_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::bcond_string((data.read<std::uint16_t>(offset) & 0xFF00), value)
-		}, false);
+		});
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -128,7 +118,7 @@ struct arm_thumb_bl_reloc : public arm_relocator::relocatelet {
 		return lyn::event_code(lyn::event_code::CODE_SHORT, {
 			arm_relocator::bl_op1_string(value),
 			arm_relocator::bl_op2_string(value)
-		}, false);
+		});
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -157,9 +147,7 @@ struct arm_arm_b_reloc : public arm_relocator::relocatelet {
 
 		return lyn::event_code(
 			lyn::event_code::CODE_WORD,
-			arm_relocator::b24_arm_string(data.read<uint32_t>(offset), value),
-			false
-		);
+			arm_relocator::b24_arm_string(data.read<uint32_t>(offset), value));
 	}
 
 	void apply_relocation(section_data& data, unsigned int offset, unsigned int value, int addend) const {
@@ -248,40 +236,16 @@ std::string arm_relocator::pcrel_arm_reloc_string(const std::string& symbol, int
 }
 
 std::string arm_relocator::b24_arm_string(std::uint32_t base, const std::string& valueString) {
-	std::string result;
-	result.reserve(3 + valueString.size() + 15 + 8 + 1);
-
 	base &= 0xFF000000;
-
-	result.append("((");
-	result.append(valueString);
-	result.append(">>2)&$FFFFFF)|$");
-	util::append_hex(result, base);
-
-	return result;
+	return std::format("(({0}>>2)&$FFFFFF)|${1:X}", valueString, base);
 }
 
 std::string arm_relocator::b_string(const std::string& valueString) {
-	std::string result;
-	result.reserve(19 + valueString.size());
-
-	result.append("((");
-	result.append(valueString);
-	result.append(">>1)&$7FF)|$E000");
-
-	return result;
+	return std::format("(({0}>>1)&$7FF)|$E000", valueString);
 }
 
 std::string arm_relocator::bcond_string(std::uint16_t base, const std::string& valueString) {
-	std::string result;
-	result.reserve(18 + valueString.size());
-
-	result.append("((");
-	result.append(valueString);
-	result.append(">>1)&$FF)|$");
-	util::append_hex(result, base);
-
-	return result;
+	return std::format("(({0}>>1)&$FF)|${1:X}", valueString, base);
 }
 
 std::string arm_relocator::bl_op1_string(const std::string& valueString) {

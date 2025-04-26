@@ -13,7 +13,6 @@
 
 #include "core/data_file.h"
 #include "ea/event_section.h"
-#include "util/hex_write.h"
 
 namespace elfcpp {
 
@@ -57,15 +56,7 @@ void event_object::append_from_elf(const char* fileName)
 
 	auto getLocalSymbolName = [this] (int section, int index) -> std::string
 	{
-		std::string result;
-		result.reserve(0x10);
-
-		result.append("_L");
-		util::append_hex(result, mSections.size() + section);
-		result.append("_");
-		util::append_hex(result, index);
-
-		return result;
+		return std::format("_L{0:X}_{1:X}", mSections.size() + section, index);
 	};
 
 	auto getGlobalSymbolName = [] (const char* name) -> std::string
@@ -611,7 +602,7 @@ void event_object::write_section_data_event(
 
 			auto symName = (it == abs_symbol_map.end())
 				? relocation.symbolName
-				: util::make_hex_string("$", mAbsoluteSymbols[it->second].offset);
+				: std::format("${0:X}", mAbsoluteSymbols[it->second].offset);
 
 			event_code code(relocatelet->make_event_code(
 				section,

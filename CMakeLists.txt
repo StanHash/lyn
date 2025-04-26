@@ -32,8 +32,6 @@ set(ELFCPP_SOURCE_LIST
 set(LYN_SOURCE_LIST
   main.cpp
 
-  util/hex_write.h
-
   core/data_chunk.h
   core/data_chunk.cpp
 

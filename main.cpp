@@ -1,11 +1,10 @@
+#include <format>
 #include <iostream>
-#include <fstream>
 #include <cstring>
 
 #include "config.h"
 
 #include "core/event_object.h"
-#include "util/hex_write.h"
 
 void print_usage(std::ostream& out)
 {
@@ -53,13 +52,13 @@ int do_diff(int argc, const char* const* argv)
 			   continue;
 
 		   if (nameDiff.baseName.empty())
-			   std::cout << "+" << util::make_hex_string("$", address) << " " << nameDiff.otherName << std::endl;
+			   std::cout << "+" << std::format("${0:08X} {1}", address, nameDiff.otherName) << std::endl;
 
 		   else if (nameDiff.otherName.empty())
-			   std::cout << "-" << util::make_hex_string("$", address) << " " << nameDiff.baseName << std::endl;
+			   std::cout << "-" << std::format("${0:08X} {1}", address, nameDiff.otherName) << std::endl;
 
 		   else
-			   std::cout << ">" << util::make_hex_string("$", address) << " " << nameDiff.baseName << " " << nameDiff.otherName << std::endl;
+			   std::cout << ">" << std::format("${0:08X} {1}", address, nameDiff.otherName) << " " << nameDiff.otherName << std::endl;
 	   }
    }
    catch (const std::exception& e)
