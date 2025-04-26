@@ -3,6 +3,7 @@
 
 #include "arm_relocator.h"
 #include "section_data.h"
+#include <unordered_map>
 
 namespace lyn {
 
@@ -36,6 +37,13 @@ public:
 	const std::vector<section_data::symbol>& absolute_symbols() const { return mAbsoluteSymbols; }
 
 private:
+	void write_section_data_event(
+		std::ostream& output,
+		const section_data& section,
+		const std::unordered_map<std::string_view, size_t>& abs_symbol_map) const;
+
+	std::unordered_map<std::string_view, size_t> make_absolute_symbol_map() const;
+
 	arm_relocator mRelocator;
 
 	std::vector<section_data> mSections;

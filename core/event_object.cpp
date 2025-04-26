@@ -1,9 +1,12 @@
 #include "event_object.h"
 
-#include <fstream>
-
-#include <iomanip>
 #include <algorithm>
+#include <cassert>
+#include <format>
+#include <ostream>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "elfcpp/elfcpp_file.h"
 #include "elfcpp/arm.h"
@@ -382,15 +385,18 @@ void event_object::try_relocate_relatives() {
 }
 
 void event_object::try_relocate_absolutes() {
+	auto absolute_ids = make_absolute_symbol_map();
+
 	for (auto& section : mSections) {
 		section.relocations().erase(
 			std::remove_if(
 				section.relocations().begin(),
 				section.relocations().end(),
-				[this, &section] (const section_data::relocation& relocation) -> bool {
-					for (auto& symbol : mAbsoluteSymbols) {
-						if (symbol.name != relocation.symbolName)
-							continue;
+				[this, &section, &absolute_ids] (const section_data::relocation& relocation) -> bool {
+					auto it = absolute_ids.find(relocation.symbolName);
+
+					if (it != absolute_ids.end()) {
+						auto & symbol = mAbsoluteSymbols[it->second];
 
 						if (auto relocatelet = mRelocator.get_relocatelet(relocation.type)) {
 							if (relocatelet->is_absolute()) {
@@ -454,17 +460,23 @@ void event_object::cleanup() {
 std::vector<event_object::hook> event_object::get_hooks() const {
 	std::vector<hook> result;
 
+	std::unordered_set<std::string_view> symbol_names;
+
+	for (auto& section : mSections) {
+		for (auto& locSymbol : section.symbols()) {
+			if (!locSymbol.isLocal && !locSymbol.name.empty()) {
+				std::string_view name(locSymbol.name);
+				symbol_names.insert(name);
+			}
+		}
+	}
+
 	for (auto& absSymbol : mAbsoluteSymbols) {
-		if (!(absSymbol.offset & 0x8000000))
+		if (absSymbol.offset < 0x08000000 || absSymbol.offset >= 0x0A000000)
 			continue; // Not in ROM
 
-		for (auto& section : mSections) {
-			for (auto& locSymbol : section.symbols()) {
-				if (absSymbol.name != locSymbol.name)
-					continue; // Not same symbol
-
-				result.push_back({ (absSymbol.offset & (~0x8000000)), absSymbol.name });
-			}
+		if (symbol_names.contains(std::string_view(absSymbol.name))) {
+			result.push_back({ (absSymbol.offset - 0x08000000), absSymbol.name });
 		}
 	}
 
@@ -474,43 +486,11 @@ std::vector<event_object::hook> event_object::get_hooks() const {
 void event_object::write_events(std::ostream& output) const {
 	unsigned offset = 0;
 
+	/* we do this here but this should really be something that have already */
+	auto abs_symbol_map = make_absolute_symbol_map();
+
 	for (auto& section : mSections) {
-		event_section events; // = section.make_events();
-		events.resize(section.size());
-
 		output << "ALIGN 4" << std::endl;
-
-		for (auto& relocation : section.relocations())
-		{
-			if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
-			{
-				// This is probably the worst hack I've ever written
-				// lyn needs a rewrite
-
-				// (I makes sure that relative relocations to known absolute values will reference the value and not the name)
-
-				auto it = std::find_if(
-					mAbsoluteSymbols.begin(),
-					mAbsoluteSymbols.end(),
-					[&] (const section_data::symbol& sym) { return sym.name == relocation.symbolName; });
-
-				auto symName = (it == mAbsoluteSymbols.end())
-					? relocation.symbolName
-					: util::make_hex_string("$", it->offset);
-
-				events.map_code(relocation.offset, relocatelet->make_event_code(
-					section,
-					relocation.offset,
-					symName,
-					relocation.addend
-				));
-			}
-			else if (relocation.type != elfcpp::R_ARM_V4BX) // dirty hack
-				throw std::runtime_error(std::string("unhandled relocation type #").append(std::to_string(relocation.type)));
-		}
-
-		events.compress_codes();
-		events.optimize();
 
 		if (std::any_of(
 			section.symbols().begin(),
@@ -559,11 +539,11 @@ void event_object::write_events(std::ostream& output) const {
 
 			output << "POP" << std::endl;
 
-			events.write_to_stream(output, section);
+			write_section_data_event(output, section, abs_symbol_map);
 
 			output << "}" << std::endl;
 		} else {
-			events.write_to_stream(output, section);
+			write_section_data_event(output, section, abs_symbol_map);
 		}
 
 		offset += section.size();
@@ -571,6 +551,94 @@ void event_object::write_events(std::ostream& output) const {
 		if (unsigned misalign = (offset % 4))
 			offset += (4 - misalign);
 	}
+}
+
+void event_object::write_section_data_event(
+	std::ostream& output,
+	const section_data& section,
+	const std::unordered_map<std::string_view, size_t>& abs_symbol_map) const
+{
+	constexpr size_t ALIGNMENT_MASK = 0b111; // 4, 2, 1
+
+	size_t prev_tail_offset = 0;
+
+	for (auto& relocation : section.relocations())
+	{
+		// write any bytes we skipped over
+
+		if (prev_tail_offset != relocation.offset)
+		{
+			assert(prev_tail_offset < relocation.offset);
+
+			int alignment = prev_tail_offset & ALIGNMENT_MASK;
+
+			std::span<const unsigned char> bytes(
+				section.data() + prev_tail_offset,
+				relocation.offset - prev_tail_offset);
+
+			write_event_bytes(output, alignment, bytes);
+		}
+
+		// translate relocation into event
+
+		if (auto relocatelet = mRelocator.get_relocatelet(relocation.type))
+		{
+			// This is probably the worst hack I've ever written
+			// lyn needs a rewrite
+
+			// (I makes sure that relative relocations to known absolute values will reference the value and not the name)
+
+			auto it = abs_symbol_map.find(relocation.symbolName);
+
+			auto symName = (it == abs_symbol_map.end())
+				? relocation.symbolName
+				: util::make_hex_string("$", mAbsoluteSymbols[it->second].offset);
+
+			event_code code(relocatelet->make_event_code(
+				section,
+				relocation.offset,
+				symName,
+				relocation.addend));
+
+			int alignment = relocation.offset & ALIGNMENT_MASK;
+
+			if ((alignment % code.code_align()) == 0)
+				code.write_to_stream(output);
+			else
+				code.write_to_stream_misaligned(output);
+
+			output << std::endl;
+
+			prev_tail_offset = relocation.offset + code.code_size();
+		}
+		else if (relocation.type != elfcpp::R_ARM_V4BX) // another dirty hack
+			throw std::runtime_error(std::format("unhandled relocation type #{0}", relocation.type));
+	}
+
+	// write any bytes left over
+
+	if (prev_tail_offset != section.size())
+	{
+		assert(prev_tail_offset < section.size());
+
+		int alignment = prev_tail_offset & ALIGNMENT_MASK;
+
+		std::span<const unsigned char> bytes(
+			section.data() + prev_tail_offset,
+			section.size() - prev_tail_offset);
+
+		write_event_bytes(output, alignment, bytes);
+	}
+}
+
+std::unordered_map<std::string_view, size_t> event_object::make_absolute_symbol_map() const {
+	std::unordered_map<std::string_view, size_t> result;
+
+	for (size_t i = 0; i < mAbsoluteSymbols.size(); i++) {
+		result.insert({ mAbsoluteSymbols[i].name, i });
+	}
+
+	return result;
 }
 
 } // namespace lyn

@@ -1,37 +1,15 @@
 #ifndef EVENT_SECTION_H
 #define EVENT_SECTION_H
 
-#include "ea/event_code.h"
-#include "core/data_chunk.h"
-
-#include <iostream>
+#include <ostream>
+#include <span>
 
 namespace lyn {
 
-class event_section {
-public:
-	event_section() = default;
+/* TODO: rename and/or move this
+ * (this used to define a class but simplifications made it redundant) */
 
-	event_section(const event_section& other) { (*this) = other; }
-	event_section(event_section&& other) { (*this) = std::move(other); }
-
-	event_section& operator = (const event_section& other);
-	event_section& operator = (event_section&& other);
-
-	void write_to_stream(std::ostream& output, const data_chunk& base) const;
-
-	void resize(unsigned size);
-
-	void map_code(unsigned offset, const event_code& code);
-	void map_code(unsigned offset, event_code&& code);
-
-	void compress_codes();
-	void optimize();
-
-private:
-	std::vector<int> mCodeMap;
-	std::vector<event_code> mCodes;
-};
+void write_event_bytes(std::ostream& output, int alignment, std::span<const unsigned char> bytes);
 
 } // namespace lyn
 
